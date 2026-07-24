@@ -1,0 +1,19 @@
+# Dépendances / builds (chaque package a les siennes)
+**/node_modules/
+**/dist/
+**/build/
+**/.expo/
+
+# Python / Django (backend)
+**/.venv/
+**/venv/
+**/__pycache__/
+*.pyc
+*.sqlite3
+**/staticfiles/
+**/media/
+
+# Environnement & divers
+**/.env
+.DS_Store
+*.log
