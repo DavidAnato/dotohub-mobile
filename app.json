@@ -14,12 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "bj.dotoplus.hub",
       "infoPlist": {
         "NSCameraUsageDescription": "Scanner les QR DotoCard des patients.",
         "NSFaceIDUsageDescription": "Déverrouillage biométrique de DotoHub"
       }
     },
     "android": {
+      "package": "bj.dotoplus.hub",
       "adaptiveIcon": {
         "backgroundColor": "#1E3755",
         "foregroundImage": "./assets/android-icon-foreground.png",
