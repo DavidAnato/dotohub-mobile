@@ -31,7 +31,11 @@
       "permissions": [
         "CAMERA",
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "USE_FINGERPRINT",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
       "usesCleartextTraffic": true,
       "predictiveBackGestureEnabled": false
@@ -63,6 +67,12 @@
         }
       ],
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9f3dd0ef-9bf1-49b9-8579-3f2faaa9233e"
+      }
+    },
+    "owner": "davidanato"
   }
 }
