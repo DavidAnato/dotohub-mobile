@@ -21,6 +21,7 @@ import { persistOptions, queryClient } from "./src/queries/queryClient";
 import { pingOnline, useAppStore } from "./src/store/appStore";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { PinLockScreen } from "./src/components/PinInput";
+import { useHubRealtime } from "./src/hooks/useHubRealtime";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -83,9 +84,10 @@ function AppInner() {
   const [bioAvailable, setBioAvailable] = useState(false);
   const wasBackground = useRef(false);
 
-  const tryBiometricUnlock = useCallback(async (): Promise<boolean> => {
-    const enabled = await storage.isBioEnabled();
-    if (!enabled) return false;
+  useHubRealtime(phase === "main" && !locked && !needsPinSetup);
+
+  /** Prompt biométrie. Auto-unlock au retour seulement si bio activée en stockage. */
+  const promptBiometric = useCallback(async (): Promise<boolean> => {
     const hw = await LocalAuthentication.hasHardwareAsync();
     const enrolled = hw && (await LocalAuthentication.isEnrolledAsync());
     if (!enrolled) return false;
@@ -96,6 +98,11 @@ function AppInner() {
     });
     return !!res.success;
   }, []);
+
+  const tryBiometricUnlock = useCallback(async (): Promise<boolean> => {
+    if (!(await storage.isBioEnabled())) return false;
+    return promptBiometric();
+  }, [promptBiometric]);
 
   useEffect(() => {
     hydrateTheme();
@@ -264,7 +271,9 @@ function AppInner() {
                     ? undefined
                     : async () => {
                         if (pinBusyRef.current) return;
-                        if (await tryBiometricUnlock()) {
+                        const ok = await promptBiometric();
+                        if (ok) {
+                          await storage.setBioEnabled(true);
                           setLocked(false);
                           setPinError("");
                         }

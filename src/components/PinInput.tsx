@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -52,9 +53,17 @@ export function PinInput({
   const [focused, setFocused] = useState(false);
   const locked = disabled || loading;
 
+  const focusInput = () => {
+    if (locked) return;
+    // Double focus : Android / Modal Expo Go ignore souvent le 1er appel
+    inputRef.current?.focus();
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   useEffect(() => {
     if (autoFocus && !locked) {
-      const t = setTimeout(() => inputRef.current?.focus(), 280);
+      const delay = Platform.OS === "android" ? 450 : 280;
+      const t = setTimeout(focusInput, delay);
       return () => clearTimeout(t);
     }
   }, [autoFocus, locked]);
@@ -65,6 +74,14 @@ export function PinInput({
       setFocused(false);
     }
   }, [locked]);
+
+  // Re-focus après reset (PIN incorrect)
+  useEffect(() => {
+    if (!locked && autoFocus && value.replace(/\D/g, "").length === 0) {
+      const t = setTimeout(focusInput, 120);
+      return () => clearTimeout(t);
+    }
+  }, [value, locked, autoFocus]);
 
   useEffect(() => {
     if (!error) return;
@@ -109,90 +126,98 @@ export function PinInput({
           {label}
         </Text>
       ) : null}
-      <Pressable onPress={() => !locked && inputRef.current?.focus()} disabled={locked}>
-        <View style={styles.pinWrap}>
-          <Animated.View
-            style={[
-              styles.row,
-              { transform: [{ translateX: shake }], opacity: locked ? 0.72 : 1 },
-            ]}
-          >
-            {Array.from({ length }).map((_, i) => {
-              const filled = i < digits.length;
-              const active = !locked && focused && i === digits.length;
-              return (
-                <View
-                  key={i}
-                  style={[
-                    styles.box,
-                    {
-                      width: length > 5 ? 44 : 52,
-                      height: length > 5 ? 54 : 60,
-                      backgroundColor: boxBg,
-                      borderColor: error
-                        ? C.emergency
-                        : active
-                          ? brandBlue
-                          : locked
-                            ? dark
-                              ? "#2A2A2A"
-                              : "#D0D7DE"
-                            : filled
-                              ? brandNavy
-                              : colors.border,
-                      borderWidth: active || error ? 2 : 1.5,
-                      shadowOpacity: active ? 0.12 : 0,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      fontSize: secure && filled ? 20 : 22,
-                      fontWeight: "700",
-                      color: digitColor,
-                      letterSpacing: 1,
-                    }}
-                  >
-                    {filled ? (secure ? "●" : digits[i]) : ""}
-                  </Text>
-                </View>
-              );
-            })}
-          </Animated.View>
-          {loading ? (
-            <View style={styles.loaderOverlay} pointerEvents="none">
+      <View style={styles.pinWrap}>
+        <Animated.View
+          style={[
+            styles.row,
+            { transform: [{ translateX: shake }], opacity: locked ? 0.72 : 1 },
+          ]}
+        >
+          {Array.from({ length }).map((_, i) => {
+            const filled = i < digits.length;
+            const active = !locked && focused && i === digits.length;
+            return (
               <View
+                key={i}
                 style={[
-                  styles.loaderBadge,
+                  styles.box,
                   {
-                    backgroundColor: dark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.94)",
-                    borderColor: dark ? "#2A2A2A" : colors.border,
+                    width: length > 5 ? 44 : 52,
+                    height: length > 5 ? 54 : 60,
+                    backgroundColor: boxBg,
+                    borderColor: error
+                      ? C.emergency
+                      : active
+                        ? brandBlue
+                        : locked
+                          ? dark
+                            ? "#2A2A2A"
+                            : "#D0D7DE"
+                          : filled
+                            ? brandNavy
+                            : colors.border,
+                    borderWidth: active || error ? 2 : 1.5,
+                    shadowOpacity: active ? 0.12 : 0,
                   },
                 ]}
               >
-                <ActivityIndicator size="small" color={brandBlue} />
+                <Text
+                  style={{
+                    fontSize: secure && filled ? 20 : 22,
+                    fontWeight: "700",
+                    color: digitColor,
+                    letterSpacing: 1,
+                  }}
+                >
+                  {filled ? (secure ? "●" : digits[i]) : ""}
+                </Text>
               </View>
+            );
+          })}
+        </Animated.View>
+        {!locked ? (
+          <TextInput
+            ref={inputRef}
+            value={digits}
+            onChangeText={handleChange}
+            keyboardType="number-pad"
+            inputMode="numeric"
+            maxLength={length}
+            caretHidden
+            contextMenuHidden
+            autoFocus={false}
+            editable
+            showSoftInputOnFocus
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            style={styles.inputOverlay}
+            textContentType="oneTimeCode"
+            autoComplete="sms-otp"
+            importantForAutofill="no"
+            underlineColorAndroid="transparent"
+            accessibilityLabel={label || `Code à ${length} chiffres`}
+            accessibilityState={{ disabled: locked, busy: loading }}
+          />
+        ) : null}
+        {locked ? (
+          <Pressable style={StyleSheet.absoluteFillObject} disabled />
+        ) : null}
+        {loading ? (
+          <View style={styles.loaderOverlay} pointerEvents="none">
+            <View
+              style={[
+                styles.loaderBadge,
+                {
+                  backgroundColor: dark ? "rgba(26,26,26,0.92)" : "rgba(255,255,255,0.94)",
+                  borderColor: dark ? "#2A2A2A" : colors.border,
+                },
+              ]}
+            >
+              <ActivityIndicator size="small" color={brandBlue} />
             </View>
-          ) : null}
-        </View>
-      </Pressable>
-      <TextInput
-        ref={inputRef}
-        value={digits}
-        onChangeText={handleChange}
-        keyboardType="number-pad"
-        maxLength={length}
-        caretHidden
-        autoFocus={autoFocus && !locked}
-        editable={!locked}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        style={styles.hidden}
-        textContentType="oneTimeCode"
-        importantForAutofill="no"
-        accessibilityLabel={label || `Code à ${length} chiffres`}
-        accessibilityState={{ disabled: locked, busy: loading }}
-      />
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -331,6 +356,7 @@ export function PinLockScreen({
       </Text>
 
       <PinInput
+        key={`${mode}-${step}-${displayErr ? "err" : "ok"}`}
         value={currentValue}
         onChange={currentOnChange}
         onComplete={handleComplete}
@@ -423,10 +449,23 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
+  /** Couvre les cases — opacity > 0 obligatoire pour le clavier Android */
+  inputOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 2,
+    opacity: 0.02,
+    color: "transparent",
+    backgroundColor: "transparent",
+    fontSize: 1,
+    letterSpacing: 0,
+    padding: 0,
+    margin: 0,
+  },
   loaderOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 3,
   },
   loaderBadge: {
     width: 44,
@@ -440,11 +479,5 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
-  },
-  hidden: {
-    position: "absolute",
-    opacity: 0,
-    height: 1,
-    width: 1,
   },
 });

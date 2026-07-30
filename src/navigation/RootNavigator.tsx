@@ -41,6 +41,35 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 type ConsentProps = NativeStackScreenProps<RootStackParamList, "ConsentWaiting">;
 
+/** Ferme le dossier en temps réel si le patient révoque l'accès (SSE). */
+function PatientScreenGate({
+  patientId,
+  user,
+  dark,
+  onBack,
+}: {
+  patientId: number;
+  user: NonNullable<ReturnType<typeof useAppStore.getState>["user"]>;
+  dark: boolean;
+  onBack: () => void;
+}) {
+  const accessKick = useAppStore((s) => s.accessKick);
+  const clearAccessKick = useAppStore((s) => s.clearAccessKick);
+
+  useEffect(() => {
+    if (!accessKick) return;
+    if (Number(accessKick.patientId) !== Number(patientId)) return;
+    const msg = accessKick.message;
+    clearAccessKick();
+    appAlert("Accès révoqué", msg, [{ text: "OK", onPress: onBack }]);
+    onBack();
+  }, [accessKick, patientId, clearAccessKick, onBack]);
+
+  return (
+    <PatientDossier patientId={patientId} user={user} dark={dark} onBack={onBack} />
+  );
+}
+
 /** Sur l'onglet racine : confirmer avant de quitter (Android). */
 function useAndroidExitConfirm(appName: string) {
   const navigation = useNavigation();
@@ -346,7 +375,7 @@ function MainNavigator() {
         <RootStack.Screen name="MainTabs" component={MainTabs} />
         <RootStack.Screen name="Patient">
           {({ route, navigation }) => (
-            <PatientDossier
+            <PatientScreenGate
               patientId={route.params.patientId}
               user={user}
               dark={dark}

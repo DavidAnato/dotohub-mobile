@@ -73,7 +73,7 @@ export default function Scan({
     setBusy(true);
     setLastMsg("");
     try {
-      const res = await api.scanDodoCard(data.trim(), emergency);
+      const res = await api.scanDotoCard(data.trim(), emergency);
       const name =
         res.urgence?.full_name ||
         (res.urgence?.nom
@@ -119,14 +119,14 @@ export default function Scan({
   if (!permission.granted) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
-        <Header title="Scan DodoCard" subtitle="Consentement patient sauf urgence" />
+        <Header title="Scan DotoCard" subtitle="Consentement patient sauf urgence" />
         <ScreenEnter>
           <View style={{ flex: 1, padding: 20, justifyContent: "center" }}>
             <Card colors={colors} decor="teal" style={{ alignItems: "center", gap: 14, paddingVertical: 28 }}>
               <EmptyState
                 icon="camera-outline"
                 title="Caméra requise"
-                subtitle="Autorisez la caméra pour scanner une DodoCard."
+                subtitle="Autorisez la caméra pour scanner une DotoCard."
                 dark={dark}
               />
               <View style={{ width: "100%", paddingHorizontal: 8 }}>
@@ -146,7 +146,7 @@ export default function Scan({
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Header title="Scan DodoCard" subtitle="Alignez le QR dans le cadre" />
+      <Header title="Scan DotoCard" subtitle="Alignez le QR dans le cadre" />
       <ScreenEnter>
         <View style={{ flex: 1, padding: 16, gap: 14 }}>
           {/* Preview caméra encadrée */}
@@ -261,7 +261,7 @@ export default function Scan({
             </Text>
           ) : (
             <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", fontWeight: "600" }}>
-              Présentez la DodoCard du patient face à la caméra
+              Présentez la DotoCard du patient face à la caméra
             </Text>
           )}
 
@@ -291,7 +291,7 @@ export default function Scan({
               <TextInput
                 value={manual}
                 onChangeText={setManual}
-                placeholder="Token DodoCard"
+                placeholder="Token DotoCard"
                 placeholderTextColor={colors.grey}
                 style={[
                   s.input,

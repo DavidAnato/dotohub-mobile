@@ -57,7 +57,7 @@ export function useSearchMutation() {
 
 export function useScanMutation() {
   return useMutation({
-    mutationFn: (token: string) => api.scanDodoCard(token),
+    mutationFn: (token: string) => api.scanDotoCard(token),
   });
 }
 

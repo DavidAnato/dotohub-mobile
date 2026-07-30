@@ -433,7 +433,7 @@ export default function Settings({
                 <SettingsRow
                   icon="shield-checkmark-outline"
                   label="Administration"
-                  subtitle="Structure, DodoCards (web)"
+                  subtitle="Structure, DotoCards (web)"
                   colors={colors}
                   onPress={() => setPanel("admin")}
                 />
@@ -650,11 +650,11 @@ export default function Settings({
             <View style={{ height: 1, backgroundColor: colors.border }} />
             <View>
               <Text style={{ color: colors.text, fontWeight: "700", fontSize: 15 }}>
-                DodoCards
+                DotoCards
               </Text>
               <Text style={{ color: colors.muted, lineHeight: 20, marginTop: 6 }}>
                 La gestion des cartes QR (émission, révocation, réémission) se fait sur le hub
-                web DotoHub — menu DodoCards. Cette app mobile n&apos;inclut pas d&apos;écran
+                web DotoHub — menu DotoCards. Cette app mobile n&apos;inclut pas d&apos;écran
                 admin dédié pour l&apos;instant.
               </Text>
             </View>

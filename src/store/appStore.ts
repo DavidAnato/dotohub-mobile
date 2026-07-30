@@ -13,12 +13,18 @@ export type PendingConsent = {
   accessRequestId?: number;
 } | null;
 
+export type AccessKick = {
+  patientId: number;
+  message: string;
+} | null;
+
 type AppState = {
   phase: AppPhase;
   tab: Tab;
   user: ProUser | null;
   patientId: number | null;
   pendingConsent: PendingConsent;
+  accessKick: AccessKick;
   unread: number;
   online: boolean;
   dark: boolean;
@@ -29,6 +35,8 @@ type AppState = {
   setUser: (u: ProUser | null) => void;
   setPatientId: (id: number | null) => void;
   setPendingConsent: (p: PendingConsent) => void;
+  setAccessKick: (k: AccessKick) => void;
+  clearAccessKick: () => void;
   setUnread: (n: number) => void;
   setOnline: (v: boolean) => void;
   setDark: (v: boolean) => void;
@@ -48,6 +56,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   user: null,
   patientId: null,
   pendingConsent: null,
+  accessKick: null,
   unread: 0,
   online: true,
   dark: false,
@@ -59,6 +68,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setUser: (user) => set({ user }),
   setPatientId: (patientId) => set({ patientId }),
   setPendingConsent: (pendingConsent) => set({ pendingConsent }),
+  setAccessKick: (accessKick) => set({ accessKick }),
+  clearAccessKick: () => set({ accessKick: null }),
   setUnread: (unread) => set({ unread }),
   setOnline: (online) => set({ online }),
   setDark: (dark) => set({ dark }),
@@ -81,6 +92,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       tab: "home",
       patientId: null,
       pendingConsent: null,
+      accessKick: null,
       needsPinSetup: !user.pin_set,
       locked: !!user.pin_set,
     }),
@@ -90,6 +102,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       tab: "home",
       patientId: null,
       pendingConsent: null,
+      accessKick: null,
       unread: 0,
       locked: false,
       needsPinSetup: false,

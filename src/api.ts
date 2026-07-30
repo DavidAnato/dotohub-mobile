@@ -551,7 +551,7 @@ export const api = {
     });
   },
 
-  async scanDodoCard(token: string, emergency = false) {
+  async scanDotoCard(token: string, emergency = false) {
     return requestJson("/api/dodocards/scan/", {
       method: "POST",
       body: JSON.stringify({ token, emergency }),

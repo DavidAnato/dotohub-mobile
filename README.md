@@ -2,7 +2,7 @@
 
 App Expo / React Native pour les professionnels de santé.
 Se connecte à la même API Django (`doto-backend`) et au même JWT
-que DotoHub web. Un scan DodoCard publie un événement SSE pour
+que DotoHub web. Un scan DotoCard publie un événement SSE pour
 ouvrir le dossier sur le bureau (même compte).
 
 ## Démarrage

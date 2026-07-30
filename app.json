@@ -15,7 +15,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Scanner les QR DodoCard des patients."
+        "NSCameraUsageDescription": "Scanner les QR DotoCard des patients.",
+        "NSFaceIDUsageDescription": "Déverrouillage biométrique de DotoHub"
       }
     },
     "android": {
@@ -26,7 +27,9 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
       ],
       "usesCleartextTraffic": true,
       "predictiveBackGestureEnabled": false
@@ -46,9 +49,15 @@
         }
       ],
       [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Autoriser DotoHub à utiliser Face ID pour le déverrouillage."
+        }
+      ],
+      [
         "expo-camera",
         {
-          "cameraPermission": "Autoriser DotoHub à utiliser la caméra pour scanner les DodoCard."
+          "cameraPermission": "Autoriser DotoHub à utiliser la caméra pour scanner les DotoCard."
         }
       ],
       "@react-native-community/datetimepicker"

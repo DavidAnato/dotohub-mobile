@@ -165,7 +165,7 @@ export function roleHomeCtas(role: string): RoleNavCta[] {
         {
           id: "scan-urgence",
           title: "Scan urgence",
-          subtitle: "Scanner DodoCard",
+          subtitle: "Scanner DotoCard",
           icon: "qr-code-outline",
           target: "scan",
           emphasis: true,

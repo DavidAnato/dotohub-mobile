@@ -624,6 +624,17 @@ export default function PatientDossier({
                       <Text style={{ color: colors.muted, fontSize: 12, marginTop: 4 }}>
                         {item.date ? new Date(item.date).toLocaleDateString("fr-FR") : ""}
                       </Text>
+                      <Text style={{ color: colors.text, fontSize: 13, marginTop: 6, fontWeight: "700" }}>
+                        {item.medecin_nom || "Médecin non renseigné"}
+                      </Text>
+                      {item.medecin_telephone ? (
+                        <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+                          Tél. {item.medecin_telephone}
+                        </Text>
+                      ) : null}
+                      <Text style={{ color: colors.text, fontSize: 13, marginTop: 2 }}>
+                        {item.structure_nom || "Structure non renseignée"}
+                      </Text>
                       {(user.role === "medecin" || user.role === "admin") && !item.annule ? (
                         <Button
                           title="Annuler la consultation"
@@ -662,7 +673,22 @@ export default function PatientDossier({
                         Ordonnance{" "}
                         {item.date ? `du ${new Date(item.date).toLocaleDateString("fr-FR")}` : ""}
                       </Text>
-                      <Text style={{ color: colors.muted, fontSize: 12 }}>
+                      {item.medecin_nom ? (
+                        <Text style={{ color: colors.text, fontSize: 13, marginTop: 4, fontWeight: "700" }}>
+                          {item.medecin_nom}
+                        </Text>
+                      ) : null}
+                      {item.medecin_telephone ? (
+                        <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+                          Tél. {item.medecin_telephone}
+                        </Text>
+                      ) : null}
+                      {item.structure_nom ? (
+                        <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+                          {item.structure_nom}
+                        </Text>
+                      ) : null}
+                      <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
                         {item.statut_label || item.statut}
                       </Text>
                       {item.statut === "active" &&

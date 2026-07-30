@@ -181,20 +181,20 @@ export function CardDecor({
 }) {
   const blobs =
     variant === "teal"
-      ? ["rgba(62,130,149,0.14)", "rgba(30,55,85,0.08)"]
+      ? ["rgba(62,130,149,0.04)", "rgba(30,55,85,0.025)"]
       : variant === "navy"
-        ? ["rgba(30,55,85,0.12)", "rgba(62,130,149,0.10)"]
+        ? ["rgba(30,55,85,0.035)", "rgba(62,130,149,0.03)"]
         : variant === "calm"
-          ? ["rgba(62,130,149,0.08)", "rgba(30,55,85,0.05)"]
-          : ["rgba(62,130,149,0.10)", "rgba(30,55,85,0.07)"];
+          ? ["rgba(62,130,149,0.025)", "rgba(30,55,85,0.015)"]
+          : ["rgba(62,130,149,0.03)", "rgba(30,55,85,0.02)"];
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <LinearGradient
         colors={
           dark
-            ? (["rgba(62,130,149,0.10)", "transparent", "rgba(255,255,255,0.03)"] as const)
-            : (["rgba(232,242,245,0.95)", "rgba(255,255,255,0.4)", "rgba(30,55,85,0.04)"] as const)
+            ? (["rgba(62,130,149,0.04)", "transparent", "rgba(255,255,255,0.02)"] as const)
+            : (["rgba(232,242,245,0.55)", "rgba(255,255,255,0.25)", "rgba(30,55,85,0.015)"] as const)
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -231,9 +231,9 @@ export function CardDecor({
           height: 36,
           borderRadius: 8,
           borderWidth: 1,
-          borderColor: dark ? "rgba(62,130,149,0.25)" : "rgba(62,130,149,0.18)",
+          borderColor: dark ? "rgba(62,130,149,0.08)" : "rgba(62,130,149,0.06)",
           transform: [{ rotate: "18deg" }],
-          opacity: 0.55,
+          opacity: 0.18,
         }}
       />
       <View
@@ -244,7 +244,7 @@ export function CardDecor({
           width: 14,
           height: 14,
           borderRadius: 3,
-          backgroundColor: dark ? "rgba(62,130,149,0.22)" : "rgba(30,55,85,0.08)",
+          backgroundColor: dark ? "rgba(62,130,149,0.07)" : "rgba(30,55,85,0.025)",
           transform: [{ rotate: "32deg" }],
         }}
       />

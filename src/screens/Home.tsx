@@ -150,7 +150,7 @@ export default function Home({
                   <LinearGradient colors={[C.navy, C.blue]} style={{ padding: 16, borderRadius: 18, minHeight: 96 }}>
                     <IconBadge name="qr-code-outline" color={onBrand} bg="rgba(255,255,255,0.18)" />
                     <Text style={{ color: onBrand, fontWeight: "800", marginTop: 10 }}>Scanner</Text>
-                    <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>DodoCard QR</Text>
+                    <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>DotoCard QR</Text>
                   </LinearGradient>
                 </PressScale>
                 <PressScale onPress={() => onNavigate("recherche")} style={{ flex: 1, borderRadius: 18, overflow: "hidden" }}>

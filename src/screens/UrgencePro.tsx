@@ -166,7 +166,7 @@ export default function UrgencePro({
             <EmptyState
               icon="alert-circle-outline"
               title="Mode urgence"
-              subtitle="Scannez une DodoCard pour démarrer"
+              subtitle="Scannez une DotoCard pour démarrer"
               dark
             />
           </View>
@@ -217,7 +217,7 @@ export default function UrgencePro({
             <EmptyState
               icon="alert-circle-outline"
               title="Données indisponibles"
-              subtitle="Rescannez la DodoCard en mode urgence"
+              subtitle="Rescannez la DotoCard en mode urgence"
               dark
             />
           ) : (
