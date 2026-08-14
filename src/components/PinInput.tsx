@@ -12,7 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { C, brandBlue, brandNavy, darkC } from "../theme";
 
-export const PIN_LEN = 5;
+export const PIN_LEN = 4;
 const DEFAULT_PIN_LEN = PIN_LEN;
 
 type Props = {
@@ -27,7 +27,7 @@ type Props = {
   disabled?: boolean;
   /** Affiche un loader centré et grise les cases (ex. vérif OTP) */
   loading?: boolean;
-  /** Longueur (5 = PIN, 6 = OTP SMS) */
+  /** Longueur (4 = PIN, 5 = OTP SMS) */
   length?: number;
 };
 

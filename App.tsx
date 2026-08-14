@@ -21,7 +21,9 @@ import { persistOptions, queryClient } from "./src/queries/queryClient";
 import { pingOnline, useAppStore } from "./src/store/appStore";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { PinLockScreen } from "./src/components/PinInput";
+import { HospitalAttachGate } from "./src/components/HospitalAttachGate";
 import { useHubRealtime } from "./src/hooks/useHubRealtime";
+import { needsHospitalAttach } from "./src/constants";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -100,8 +102,12 @@ function AppInner() {
   }, []);
 
   const tryBiometricUnlock = useCallback(async (): Promise<boolean> => {
-    if (!(await storage.isBioEnabled())) return false;
-    return promptBiometric();
+    const hw = await LocalAuthentication.hasHardwareAsync();
+    const enrolled = hw && (await LocalAuthentication.isEnrolledAsync());
+    if (!enrolled) return false;
+    const ok = await promptBiometric();
+    if (ok) await storage.setBioEnabled(true);
+    return ok;
   }, [promptBiometric]);
 
   useEffect(() => {
@@ -162,7 +168,16 @@ function AppInner() {
               return;
             }
           } catch {
-            // Réseau indisponible : rester sur login
+            const cached = await storage.getUser();
+            if (cached) {
+              enterMain(cached);
+              if (cached.pin_set) {
+                const bioOk = await tryBiometricUnlock();
+                if (!bioOk) setLocked(true);
+                else setLocked(false);
+              }
+              return;
+            }
           }
         }
         setPhase("login");
@@ -244,6 +259,8 @@ function AppInner() {
   }
 
   const showGate = phase === "main" && (needsPinSetup || locked);
+  const showHospitalGate =
+    phase === "main" && !showGate && needsHospitalAttach(user || undefined);
 
   return (
     <SafeAreaProvider>
@@ -283,6 +300,11 @@ function AppInner() {
               />
             </SafeAreaView>
           </Modal>
+          <HospitalAttachGate
+            visible={showHospitalGate}
+            dark={dark}
+            onDone={(u) => setUser(u)}
+          />
         </View>
       </SafeAreaView>
     </SafeAreaProvider>

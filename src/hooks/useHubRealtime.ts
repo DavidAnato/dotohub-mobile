@@ -94,6 +94,11 @@ function handleHubEvent(qc: QueryClient, ev: HubMobileSseEvent) {
     void qc.invalidateQueries({ queryKey: qk.dashboard });
   }
 
+  if (ev.type === "patient_list") {
+    void qc.invalidateQueries({ queryKey: qk.dashboard });
+    void qc.invalidateQueries({ queryKey: ["patients"] });
+  }
+
   if (ev.type === "access_granted" || ev.type === "dodocard_scan") {
     invalidatePatientMedical(qc, pid);
     void qc.invalidateQueries({ queryKey: qk.dashboard });

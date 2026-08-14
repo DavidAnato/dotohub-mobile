@@ -121,8 +121,13 @@ export default function LaboFile({
   const colors = dark ? darkC : C;
   const [scope, setScope] = useState<Scope>("tous");
   const [items, setItems] = useState<ExamenItem[]>([]);
+  const [bons, setBons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
+  const [depositBon, setDepositBon] = useState<any | null>(null);
+  const [depositText, setDepositText] = useState("");
+  const [depositStatut, setDepositStatut] = useState<"normal" | "eleve" | "critique">("normal");
+  const [depositFile, setDepositFile] = useState<{ uri: string; type?: string; name?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [file, setFile] = useState<{ uri: string; type?: string; name?: string } | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -153,6 +158,13 @@ export default function LaboFile({
         return String(b.date || "").localeCompare(String(a.date || ""));
       });
       setItems(arr);
+      try {
+        const d = await api.examOrders({ en_attente: 1 });
+        const list = (d as any)?.results || d || [];
+        setBons(Array.isArray(list) ? list : []);
+      } catch {
+        setBons([]);
+      }
     } catch {
       setItems([]);
     } finally {
@@ -290,6 +302,67 @@ export default function LaboFile({
             onPress={openUpload}
           />
         </View>
+
+        {bons.length > 0 ? (
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 8 }}>
+            <Text style={{ color: colors.text, fontWeight: "800" }}>Bons en attente</Text>
+            {bons.map((b: any) => (
+              <Card key={b.id} colors={colors} style={{ gap: 8 }}>
+                <Text style={{ fontWeight: "800", color: colors.text }}>
+                  Bon #{b.id} · {b.patient_nom}
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 12 }}>
+                  {b.statut_label || b.statut} · {(b.lignes || []).map((l: any) => l.type_examen).join(", ")}
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {b.statut === "demande" ? (
+                    <Button
+                      title="Marquer reçu"
+                      compact
+                      color={C.teal}
+                      onPress={async () => {
+                        try {
+                          await api.examOrderAction(b.id, "recevoir");
+                          void load();
+                        } catch (e: any) {
+                          appAlert("Erreur", e.message);
+                        }
+                      }}
+                    />
+                  ) : null}
+                  {b.statut === "recu" || b.statut === "demande" ? (
+                    <Button
+                      title="Démarrer"
+                      compact
+                      outline
+                      color={C.teal}
+                      onPress={async () => {
+                        try {
+                          await api.examOrderAction(b.id, "demarrer");
+                          void load();
+                        } catch (e: any) {
+                          appAlert("Erreur", e.message);
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <Button
+                    title="Déposer un résultat"
+                    compact
+                    outline
+                    color={C.blue}
+                    onPress={() => {
+                      setDepositBon(b);
+                      setDepositText("");
+                      setDepositStatut("normal");
+                      setDepositFile(null);
+                    }}
+                  />
+                </View>
+              </Card>
+            ))}
+          </View>
+        ) : null}
 
         {loading && items.length === 0 ? (
           <View style={{ padding: 16 }}>
@@ -576,6 +649,140 @@ export default function LaboFile({
                     />
                   </View>
                 </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={!!depositBon}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setDepositBon(null)}
+        >
+          <View style={{ flex: 1, justifyContent: "flex-end" }}>
+            <Pressable
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0,0,0,0.65)",
+              }}
+              onPress={() => setDepositBon(null)}
+            />
+            <View
+              style={{
+                backgroundColor: colors.white,
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                maxHeight: "88%",
+                paddingBottom: 28,
+              }}
+            >
+              <View style={{ paddingHorizontal: 20, paddingVertical: 14 }}>
+                <Text style={{ color: colors.text, fontWeight: "800", fontSize: 17 }}>
+                  Déposer un résultat
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+                  Bon #{depositBon?.id} · {depositBon?.patient_nom}
+                </Text>
+              </View>
+              <ScrollView contentContainerStyle={{ padding: 20, gap: 10, paddingBottom: 32 }}>
+                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700" }}>
+                  {(depositBon?.lignes || []).map((l: any) => l.type_examen).join(", ")}
+                </Text>
+                <TextInput
+                  value={depositText}
+                  onChangeText={setDepositText}
+                  placeholder="Texte du résultat…"
+                  placeholderTextColor={colors.muted}
+                  multiline
+                  style={{
+                    minHeight: 100,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 12,
+                    padding: 12,
+                    color: colors.text,
+                    textAlignVertical: "top",
+                  }}
+                />
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                  {(["normal", "eleve", "critique"] as const).map((s) => (
+                    <Pressable
+                      key={s}
+                      onPress={() => setDepositStatut(s)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: depositStatut === s ? C.teal : colors.border,
+                      }}
+                    >
+                      <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>
+                        {s === "eleve" ? "Élevé" : s === "critique" ? "Critique" : "Normal"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Button
+                  title={depositFile ? depositFile.name || "Pièce jointe" : "Joindre un fichier (optionnel)"}
+                  outline
+                  color={C.teal}
+                  icon="attach-outline"
+                  onPress={async () => {
+                    const res = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.All,
+                      quality: 0.85,
+                    });
+                    if (res.canceled || !res.assets?.[0]) return;
+                    const asset = res.assets[0];
+                    setDepositFile({
+                      uri: asset.uri,
+                      type: asset.mimeType || "image/jpeg",
+                      name: asset.fileName || `resultat-${Date.now()}.jpg`,
+                    });
+                  }}
+                />
+                <Button
+                  title="Enregistrer le résultat"
+                  loading={busy}
+                  color={C.teal}
+                  onPress={async () => {
+                    if (!depositText.trim() && !depositFile) {
+                      appAlert("Résultat", "Saisissez un texte ou joignez un fichier.");
+                      return;
+                    }
+                    const ligne =
+                      (depositBon?.lignes || []).find((l: any) => !l.has_resultat) ||
+                      depositBon?.lignes?.[0];
+                    setBusy(true);
+                    try {
+                      await api.deposerResultat(
+                        depositBon.id,
+                        {
+                          ligne: ligne?.id ? String(ligne.id) : "",
+                          type_examen: ligne?.type_examen || "",
+                          categorie: ligne?.categorie || "analyses",
+                          resultat_texte: depositText.trim(),
+                          statut: depositStatut,
+                        },
+                        depositFile
+                      );
+                      setDepositBon(null);
+                      setDepositText("");
+                      setDepositFile(null);
+                      void load();
+                    } catch (e: any) {
+                      appAlert("Erreur", e.message);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                />
               </ScrollView>
             </View>
           </View>

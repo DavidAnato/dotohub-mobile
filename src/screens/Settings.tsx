@@ -25,6 +25,7 @@ import { Avatar } from "../components/Avatar";
 import { usePullRefresh } from "../hooks/usePullRefresh";
 import { toE164Bj } from "../phone";
 import { qk } from "../queries/keys";
+import { SPECIALITES } from "../constants";
 
 type Panel = "compte" | "photo" | "structure" | "apparence" | "a-propos" | "admin" | null;
 
@@ -192,6 +193,12 @@ export default function Settings({
   const [email, setEmail] = useState(user.email || "");
   const [photoUrl, setPhotoUrl] = useState(user.photo_url || null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [specialite, setSpecialite] = useState(user.specialite || "Médecine générale");
+  const [hospitals, setHospitals] = useState<{ id: number; nom: string }[]>([]);
+  const [pickedIds, setPickedIds] = useState<number[]>(
+    (user.structures || []).map((s) => s.id).filter((id): id is number => typeof id === "number")
+  );
+  const [principalId, setPrincipalId] = useState<number | "">(user.structure_principale || "");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -377,7 +384,20 @@ export default function Settings({
               label="Structure & rôle"
               subtitle={`${structureLabel} · ${user.role_label}`}
               colors={colors}
-              onPress={() => setPanel("structure")}
+              onPress={() => {
+                setSpecialite(user.specialite || "Médecine générale");
+                setPickedIds(
+                  (user.structures || [])
+                    .map((s) => s.id)
+                    .filter((id): id is number => typeof id === "number")
+                );
+                setPrincipalId(user.structure_principale || "");
+                setPanel("structure");
+                api
+                  .hospitals()
+                  .then((r: any) => setHospitals(r.structures || []))
+                  .catch(() => {});
+              }}
             />
           </StaggerItem>
 
@@ -565,12 +585,88 @@ export default function Settings({
               <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "800", marginBottom: 4 }}>
                 STRUCTURE
               </Text>
-              <Text style={{ color: colors.text, fontWeight: "700", fontSize: 16 }}>
-                {structureLabel}
-              </Text>
-              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
-                Liée à votre compte professionnel
-              </Text>
+              {(user.role === "medecin" || user.role === "admin") ? (
+                <>
+                  <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 6 }}>Spécialité</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 10 }}>
+                    {SPECIALITES.map((s) => (
+                      <Pressable
+                        key={s}
+                        onPress={() => setSpecialite(s)}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: specialite === s ? C.teal : colors.border,
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, color: colors.text }}>{s}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                  <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 6 }}>
+                    Hôpitaux rattachés — cochez puis désignez le principal
+                  </Text>
+                  <View style={{ maxHeight: 220 }}>
+                    {hospitals.map((h) => {
+                      const on = pickedIds.includes(h.id);
+                      return (
+                        <Pressable
+                          key={h.id}
+                          onPress={() => {
+                            setPickedIds((prev) =>
+                              on ? prev.filter((x) => x !== h.id) : [...prev, h.id]
+                            );
+                          }}
+                          style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 }}
+                        >
+                          <Ionicons
+                            name={on ? "checkbox" : "square-outline"}
+                            size={20}
+                            color={on ? C.teal : colors.muted}
+                          />
+                          <Text style={{ color: colors.text, flex: 1 }}>{h.nom}</Text>
+                          {on ? (
+                            <Pressable onPress={() => setPrincipalId(h.id)}>
+                              <Text style={{ color: principalId === h.id ? C.teal : colors.muted, fontSize: 11, fontWeight: "700" }}>
+                                {principalId === h.id ? "Principal" : "Définir principal"}
+                              </Text>
+                            </Pressable>
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <Button
+                    title="Enregistrer les rattachements"
+                    color={C.teal}
+                    onPress={async () => {
+                      try {
+                        const updated = await api.updateMe({
+                          specialite,
+                          structure_ids: pickedIds,
+                          structure_principale: principalId || null,
+                        });
+                        onUserUpdate?.(updated);
+                        setPanel(null);
+                        hapticSuccess();
+                      } catch (e: any) {
+                        appAlert("Erreur", e.message);
+                      }
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 16 }}>
+                    {structureLabel}
+                  </Text>
+                  <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+                    Liée à votre compte professionnel
+                  </Text>
+                </>
+              )}
             </View>
             <View>
               <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "800", marginBottom: 4 }}>

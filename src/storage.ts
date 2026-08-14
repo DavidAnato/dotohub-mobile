@@ -11,6 +11,7 @@ const KEYS = {
   patientsCache: "hub_patients_cache",
   dossierCache: "hub_dossier_cache",
   bioEnabled: "hub_bio_enabled",
+  localPin: "hub_local_pin",
 };
 
 export type PatientCacheItem = {
@@ -85,6 +86,15 @@ export const storage = {
   },
   async isBioEnabled() {
     return (await secureGet(KEYS.bioEnabled)) === "1";
+  },
+
+  async saveLocalPin(pin: string) {
+    if (!/^\d{4}$/.test(pin)) return;
+    await secureSet(KEYS.localPin, pin);
+  },
+  async matchLocalPin(pin: string) {
+    const stored = await secureGet(KEYS.localPin);
+    return !!stored && stored === pin;
   },
 
   async cachePatients(list: PatientCacheItem[]) {

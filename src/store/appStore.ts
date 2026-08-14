@@ -94,7 +94,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       pendingConsent: null,
       accessKick: null,
       needsPinSetup: !user.pin_set,
-      locked: !!user.pin_set,
+      locked: false,
     }),
   resetSessionState: () =>
     set({
@@ -131,6 +131,23 @@ export async function pingOnline() {
     clearTimeout(t);
     if (res.ok) {
       useAppStore.getState().setOnline(true);
+      try {
+        const { replayOfflineQueue } = await import("../offlineQueue");
+        await replayOfflineQueue(async (a) => {
+          const token = await storage.getAccess();
+          const r = await fetch(`${api.url}${a.path}`, {
+            method: a.method,
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: a.body != null ? JSON.stringify(a.body) : undefined,
+          });
+          return { ok: r.ok || r.status === 202, status: r.status };
+        });
+      } catch {
+        /* ignore */
+      }
       return;
     }
     useAppStore.getState().setOnline(true);

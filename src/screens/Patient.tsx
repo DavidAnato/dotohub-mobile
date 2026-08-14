@@ -31,6 +31,18 @@ import {
 import { Avatar } from "../components/Avatar";
 import { usePullRefresh } from "../hooks/usePullRefresh";
 import { qk } from "../queries/keys";
+import {
+  BON_STATUTS,
+  MEDICAMENT_FORMES,
+  MEDICAMENT_MOMENTS,
+  PRISE_EN_CHARGE,
+  SPECIALITES,
+  emptyMedLine,
+  nowDateISO,
+  nowISO,
+  summarizeMed,
+  type MedLine,
+} from "../constants";
 
 /** Création RDV : médecins, réceptionniste, admin */
 const RDV_WRITE_ROLES = new Set(["medecin", "receptionniste", "admin"]);
@@ -154,6 +166,18 @@ export default function PatientDossier({
   const constantes = useConstantes(
     tab === "constantes" && !offline && !needsAccess ? patientId : undefined
   );
+  const [bons, setBons] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (tab !== "examens" || offline || needsAccess) return;
+    api
+      .examOrders({ patient: patientId })
+      .then((d: any) => {
+        const list = d?.results || d || [];
+        setBons(Array.isArray(list) ? list : []);
+      })
+      .catch(() => setBons([]));
+  }, [tab, patientId, offline, needsAccess]);
 
   let items: any[] = [];
   let tabLoading = false;
@@ -608,6 +632,23 @@ export default function PatientDossier({
           contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}
           refreshControl={refreshControl}
         >
+          {tab === "examens" && bons.length > 0 ? (
+            <Card colors={colors} style={{ gap: 8 }}>
+              <Text style={{ fontWeight: "800", color: colors.text }}>Demandes d'examens</Text>
+              {bons.map((b: any) => {
+                const st = BON_STATUTS[b.statut] || { label: b.statut_label || b.statut, color: C.blue };
+                return (
+                  <View key={b.id} style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                    <Text style={{ fontWeight: "700", color: colors.text }}>Bon #{b.id}</Text>
+                    <Text style={{ color: st.color, fontSize: 12, fontWeight: "700" }}>{st.label}</Text>
+                    <Text style={{ color: colors.muted, fontSize: 12 }}>
+                      {(b.lignes || []).map((l: any) => l.type_examen).join(", ")}
+                    </Text>
+                  </View>
+                );
+              })}
+            </Card>
+          ) : null}
           {tabLoading && items.length === 0 ? (
             <SkeletonList count={3} dark={!!dark} />
           ) : items.length === 0 ? (
@@ -619,10 +660,15 @@ export default function PatientDossier({
                   {tab === "historique" && (
                     <>
                       <Text style={{ fontWeight: "800", color: colors.text }}>
-                        {item.diagnostic || "Consultation"}
+                        {item.titre ||
+                          [item.specialite || "Consultation", item.medecin_nom, item.structure_nom]
+                            .filter(Boolean)
+                            .join(" — ") ||
+                          "Consultation"}
                       </Text>
                       <Text style={{ color: colors.muted, fontSize: 12, marginTop: 4 }}>
                         {item.date ? new Date(item.date).toLocaleDateString("fr-FR") : ""}
+                        {item.appointment_id ? " · Liée à un RDV" : " · Sans RDV"}
                       </Text>
                       <Text style={{ color: colors.text, fontSize: 13, marginTop: 6, fontWeight: "700" }}>
                         {item.medecin_nom || "Médecin non renseigné"}
@@ -855,6 +901,7 @@ export default function PatientDossier({
           {!offline && !needsAccess && tab === "historique" && user.role === "medecin" && (
             <WriteConsult
               patientId={patientId}
+              user={user}
               colors={colors}
               onDone={() => consultations.refetch()}
             />
@@ -867,6 +914,16 @@ export default function PatientDossier({
                 dark={!!dark}
                 colors={colors}
                 onDone={() => ordonnances.refetch()}
+              />
+            )}
+          {!offline && !needsAccess && tab === "examens" &&
+            (user.role === "medecin" || user.role === "admin") && (
+              <WriteBon
+                patientId={patientId}
+                patientName={patient.full_name}
+                dark={!!dark}
+                colors={colors}
+                onDone={() => examens.refetch()}
               />
             )}
           {!offline && !needsAccess && tab === "examens" &&
@@ -1040,39 +1097,149 @@ function WriteAssurance({
 
 function WriteConsult({
   patientId,
+  user,
   colors,
   onDone,
 }: {
   patientId: number;
+  user: ProUser;
   colors: any;
   onDone: () => void;
 }) {
+  const structures = user.structures || [];
+  const principaleId = user.structure_principale;
+  const defaultSpec = (user as ProUser & { specialite?: string }).specialite || "Médecine générale";
+  const specOptions = SPECIALITES.includes(defaultSpec)
+    ? SPECIALITES
+    : [defaultSpec, ...SPECIALITES];
+  const [type, setType] = useState("consultation");
+  const [specialite, setSpecialite] = useState(defaultSpec);
+  const [structure, setStructure] = useState(
+    principaleId ? String(principaleId) : structures[0]?.id ? String(structures[0].id) : ""
+  );
+  const [motif, setMotif] = useState("");
   const [dx, setDx] = useState("");
+  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const inputStyle = {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 10,
+    color: colors.text,
+  };
+
   return (
     <Card colors={colors} style={{ gap: 8 }}>
       <Text style={{ fontWeight: "800", color: colors.text }}>Nouvelle consultation</Text>
+      <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Spécialité</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+        {specOptions.map((s) => (
+          <Pressable
+            key={s}
+            onPress={() => setSpecialite(s)}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: specialite === s ? C.blue : colors.border,
+              backgroundColor: specialite === s ? colors.lightBlue : colors.white,
+            }}
+          >
+            <Text style={{ color: colors.text, fontSize: 12, fontWeight: "700" }}>{s}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Structure (obligatoire)</Text>
+      {structures.length === 0 ? (
+        <Text style={{ color: C.emergency, fontSize: 12 }}>
+          Rattachez un hôpital dans Paramètres.
+        </Text>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+          {structures.map((s) => (
+            <Pressable
+              key={s.id}
+              onPress={() => setStructure(String(s.id))}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: structure === String(s.id) ? C.teal : colors.border,
+                backgroundColor: structure === String(s.id) ? colors.lightTeal : colors.white,
+              }}
+            >
+              <Text style={{ color: colors.text, fontSize: 12, fontWeight: "700" }}>{s.nom}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+      <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Type de prise en charge</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+        {PRISE_EN_CHARGE.map((t) => (
+          <Pressable
+            key={t.value}
+            onPress={() => setType(t.value)}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: type === t.value ? C.blue : colors.border,
+            }}
+          >
+            <Text style={{ color: colors.text, fontSize: 12, fontWeight: "700" }}>{t.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <TextInput
+        value={motif}
+        onChangeText={setMotif}
+        placeholder="Motif"
+        placeholderTextColor={colors.muted}
+        style={inputStyle}
+      />
       <TextInput
         value={dx}
         onChangeText={setDx}
         placeholder="Diagnostic"
-        style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10, color: colors.text }}
+        placeholderTextColor={colors.muted}
+        style={inputStyle}
+      />
+      <TextInput
+        value={notes}
+        onChangeText={setNotes}
+        placeholder="Notes / observations"
+        placeholderTextColor={colors.muted}
+        multiline
+        style={{ ...inputStyle, minHeight: 64, textAlignVertical: "top" }}
       />
       <Button
         title="Enregistrer"
         loading={busy}
         color={C.blue}
         onPress={async () => {
-          if (!dx.trim()) return;
+          if (!structure) {
+            appAlert("Structure", "Choisissez la structure de santé.");
+            return;
+          }
           setBusy(true);
           try {
             await api.createConsultation({
               patient: patientId,
               diagnostic: dx.trim(),
-              date: new Date().toISOString(),
-              type: "consultation",
+              motif: motif.trim(),
+              notes: notes.trim(),
+              date: nowISO(),
+              type,
+              specialite,
+              structure: Number(structure),
             });
             setDx("");
+            setMotif("");
+            setNotes("");
             onDone();
           } catch (e: any) {
             appAlert("Erreur", e.message);
@@ -1099,37 +1266,43 @@ function WriteOrdo({
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [nom, setNom] = useState("");
-  const [dosage, setDosage] = useState("1");
-  const [frequence, setFrequence] = useState("1x/j");
-  const [duree, setDuree] = useState("7");
+  const [lines, setLines] = useState<MedLine[]>([emptyMedLine()]);
   const [busy, setBusy] = useState(false);
 
   const close = () => setOpen(false);
 
+  const patchLine = (i: number, patch: Partial<MedLine>) => {
+    setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  };
+
   const submit = async () => {
-    if (!nom.trim()) {
-      appAlert("Médicament", "Indiquez le nom du médicament.");
+    const medicaments = lines.filter((l) => l.nom.trim());
+    if (!medicaments.length) {
+      appAlert("Médicament", "Ajoutez au moins un médicament.");
       return;
     }
     setBusy(true);
     try {
       await api.createOrdonnance({
         patient: patientId,
-        date: new Date().toISOString().slice(0, 10),
-        medicaments: [
-          {
-            nom: nom.trim(),
-            dosage: dosage.trim() || "1",
-            frequence: frequence.trim() || "1x/j",
-            duree_jours: Number(duree) || 7,
-          },
-        ],
+        date: nowDateISO(),
+        medicaments: medicaments.map((m) => ({
+          nom: m.nom.trim(),
+          dosage: m.dosage.trim(),
+          forme: m.forme,
+          quantite: m.quantite,
+          unites_par_prise: m.unites_par_prise,
+          frequence_par_jour: m.frequence_par_jour,
+          duree_jours: Number(m.duree_jours) || 3,
+          moment: m.moment,
+          instructions: m.instructions,
+          frequence:
+            m.unites_par_prise && m.frequence_par_jour
+              ? `${m.unites_par_prise} × ${m.frequence_par_jour}`
+              : "",
+        })),
       });
-      setNom("");
-      setDosage("1");
-      setFrequence("1x/j");
-      setDuree("7");
+      setLines([emptyMedLine()]);
       close();
       onDone();
       appAlert("OK", "Ordonnance créée.");
@@ -1139,6 +1312,15 @@ function WriteOrdo({
       setBusy(false);
     }
   };
+
+  const field = {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 12,
+    color: colors.text,
+    backgroundColor: dark ? colors.bg : colors.white,
+  } as const;
 
   return (
     <>
@@ -1208,66 +1390,105 @@ function WriteOrdo({
               contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 32 }}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700" }}>Médicament</Text>
-              <TextInput
-                value={nom}
-                onChangeText={setNom}
-                placeholder="Ex. Amlodipine"
-                placeholderTextColor={colors.muted}
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 12,
-                  padding: 12,
-                  color: colors.text,
-                  backgroundColor: dark ? colors.bg : colors.white,
-                }}
-              />
-              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700" }}>Dosage</Text>
-              <TextInput
-                value={dosage}
-                onChangeText={setDosage}
-                placeholder="5 mg"
-                placeholderTextColor={colors.muted}
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 12,
-                  padding: 12,
-                  color: colors.text,
-                  backgroundColor: dark ? colors.bg : colors.white,
-                }}
-              />
-              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700" }}>Fréquence</Text>
-              <TextInput
-                value={frequence}
-                onChangeText={setFrequence}
-                placeholder="1x/j"
-                placeholderTextColor={colors.muted}
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 12,
-                  padding: 12,
-                  color: colors.text,
-                  backgroundColor: dark ? colors.bg : colors.white,
-                }}
-              />
-              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700" }}>Durée (jours)</Text>
-              <TextInput
-                value={duree}
-                onChangeText={setDuree}
-                keyboardType="number-pad"
-                placeholder="7"
-                placeholderTextColor={colors.muted}
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 12,
-                  padding: 12,
-                  color: colors.text,
-                  backgroundColor: dark ? colors.bg : colors.white,
-                }}
+              {lines.map((m, i) => (
+                <View key={i} style={{ gap: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                  <Text style={{ color: colors.text, fontWeight: "800" }}>Médicament {i + 1}</Text>
+                  <TextInput
+                    value={m.nom}
+                    onChangeText={(t) => patchLine(i, { nom: t })}
+                    placeholder="Nom (ex. PARA)"
+                    placeholderTextColor={colors.muted}
+                    style={field}
+                  />
+                  <TextInput
+                    value={m.dosage}
+                    onChangeText={(t) => patchLine(i, { dosage: t })}
+                    placeholder="Dosage (ex. 1000 mg)"
+                    placeholderTextColor={colors.muted}
+                    style={field}
+                  />
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                    {MEDICAMENT_FORMES.map((f) => (
+                      <Pressable
+                        key={f}
+                        onPress={() => patchLine(i, { forme: f })}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: m.forme === f ? C.teal : colors.border,
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, color: colors.text }}>{f}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                  <TextInput
+                    value={m.quantite}
+                    onChangeText={(t) => patchLine(i, { quantite: t })}
+                    placeholder="Quantité (ex. 1 boîte)"
+                    placeholderTextColor={colors.muted}
+                    style={field}
+                  />
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <TextInput
+                      value={m.unites_par_prise}
+                      onChangeText={(t) => patchLine(i, { unites_par_prise: t })}
+                      placeholder="Unité/prise"
+                      placeholderTextColor={colors.muted}
+                      style={{ ...field, flex: 1 }}
+                    />
+                    <TextInput
+                      value={m.frequence_par_jour}
+                      onChangeText={(t) => patchLine(i, { frequence_par_jour: t })}
+                      placeholder="× / jour"
+                      placeholderTextColor={colors.muted}
+                      style={{ ...field, flex: 1 }}
+                    />
+                    <TextInput
+                      value={String(m.duree_jours)}
+                      onChangeText={(t) => patchLine(i, { duree_jours: Number(t.replace(/\D/g, "")) || "" })}
+                      keyboardType="number-pad"
+                      placeholder="Jours"
+                      placeholderTextColor={colors.muted}
+                      style={{ ...field, width: 72 }}
+                    />
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                    {MEDICAMENT_MOMENTS.map((mo) => (
+                      <Pressable
+                        key={mo.value || "none"}
+                        onPress={() => patchLine(i, { moment: mo.value })}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: m.moment === mo.value ? C.teal : colors.border,
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, color: colors.text }}>{mo.label}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                  <TextInput
+                    value={m.instructions}
+                    onChangeText={(t) => patchLine(i, { instructions: t })}
+                    placeholder="Instructions complémentaires (optionnel)"
+                    placeholderTextColor={colors.muted}
+                    style={field}
+                  />
+                  {m.nom ? (
+                    <Text style={{ color: colors.muted, fontSize: 12 }}>{summarizeMed(m)}</Text>
+                  ) : null}
+                </View>
+              ))}
+              <Button
+                title="+ Ajouter un médicament"
+                outline
+                color={C.teal}
+                onPress={() => setLines((prev) => [...prev, emptyMedLine()])}
               />
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <View style={{ flex: 1 }}>
@@ -1288,6 +1509,200 @@ function WriteOrdo({
                   />
                 </View>
               </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
+function WriteBon({
+  patientId,
+  patientName,
+  dark,
+  colors,
+  onDone,
+}: {
+  patientId: number;
+  patientName?: string;
+  dark: boolean;
+  colors: any;
+  onDone: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [catalog, setCatalog] = useState<{ code?: string; label?: string; nom?: string; categorie?: string }[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [motif, setMotif] = useState("");
+  const [observations, setObservations] = useState("");
+  const [labo, setLabo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const close = () => setOpen(false);
+
+  const labelOf = (c: { code?: string; label?: string; nom?: string }) =>
+    c.label || c.nom || c.code || "";
+
+  const openForm = async () => {
+    setOpen(true);
+    try {
+      const d = await api.examCatalog();
+      const list = Array.isArray(d) ? d : (d as any)?.results || [];
+      setCatalog(Array.isArray(list) ? list : []);
+    } catch {
+      setCatalog([]);
+    }
+  };
+
+  const submit = async () => {
+    if (!picked.length) {
+      appAlert("Examens", "Sélectionnez au moins un examen.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const lignes = picked.map((code) => {
+        const item = catalog.find((c) => (c.code || labelOf(c)) === code);
+        return {
+          code: item?.code || "",
+          type_examen: labelOf(item || { nom: code }),
+          categorie: item?.categorie || "analyses",
+        };
+      });
+      await api.createExamOrder({
+        patient: patientId,
+        motif: motif.trim(),
+        observations: observations.trim(),
+        laboratoire_nom: labo.trim(),
+        lignes,
+      });
+      setPicked([]);
+      setMotif("");
+      setObservations("");
+      setLabo("");
+      close();
+      onDone();
+      appAlert("OK", "Bon d'examen prescrit.");
+    } catch (e: any) {
+      appAlert("Erreur", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Button
+        title="Prescrire un examen"
+        icon="flask-outline"
+        color={C.teal}
+        onPress={() => void openForm()}
+      />
+      <Modal visible={open} animationType="slide" transparent onRequestClose={close}>
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.65)",
+            }}
+            onPress={close}
+          />
+          <View
+            style={{
+              backgroundColor: colors.white,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              maxHeight: "88%",
+              paddingBottom: 28,
+            }}
+          >
+            <View style={{ paddingHorizontal: 20, paddingVertical: 14 }}>
+              <Text style={{ color: colors.text, fontWeight: "800", fontSize: 17 }}>
+                Prescrire un examen
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+                Pour {patientName || "ce patient"}
+              </Text>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 20, gap: 10, paddingBottom: 32 }}>
+              {(catalog.length
+                ? catalog
+                : [
+                    { code: "nfs", label: "NFS" },
+                    { code: "crp", label: "CRP" },
+                    { code: "glycemie", label: "Glycémie" },
+                  ]
+              ).map((c) => {
+                  const key = c.code || labelOf(c);
+                  const on = picked.includes(key);
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() =>
+                        setPicked((prev) =>
+                          on ? prev.filter((x) => x !== key) : [...prev, key]
+                        )
+                      }
+                      style={{
+                        padding: 10,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: on ? C.teal : colors.border,
+                        backgroundColor: on ? (dark ? "#1C2A2E" : C.lightTeal) : colors.white,
+                      }}
+                    >
+                      <Text style={{ color: colors.text, fontWeight: "700" }}>{labelOf(c)}</Text>
+                    </Pressable>
+                  );
+                }
+              )}
+              <TextInput
+                value={motif}
+                onChangeText={setMotif}
+                placeholder="Motif / indication"
+                placeholderTextColor={colors.muted}
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 12,
+                  padding: 12,
+                  color: colors.text,
+                }}
+              />
+              <TextInput
+                value={labo}
+                onChangeText={setLabo}
+                placeholder="Laboratoire destinataire"
+                placeholderTextColor={colors.muted}
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 12,
+                  padding: 12,
+                  color: colors.text,
+                }}
+              />
+              <TextInput
+                value={observations}
+                onChangeText={setObservations}
+                placeholder="Observations (optionnel)"
+                placeholderTextColor={colors.muted}
+                multiline
+                style={{
+                  minHeight: 64,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 12,
+                  padding: 12,
+                  color: colors.text,
+                  textAlignVertical: "top",
+                }}
+              />
+              <Button title="Valider le bon" loading={busy} color={C.teal} onPress={submit} />
             </ScrollView>
           </View>
         </View>

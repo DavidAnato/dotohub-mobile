@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -27,6 +27,7 @@ import { Avatar } from "../components/Avatar";
 import { usePullRefresh } from "../hooks/usePullRefresh";
 import { api } from "../api";
 import { useAppStore } from "../store/appStore";
+import { notificationTarget } from "../notifRoutes";
 
 export type HomeNavTarget =
   | "recherche"
@@ -90,6 +91,7 @@ export default function Home({
 }) {
   const colors = dark ? darkC : C;
   const { data: dash, error, isLoading, refetch } = useHubDashboard(true);
+  const [notifs, setNotifs] = useState<any[]>([]);
   const setUser = useAppStore((s) => s.setUser);
   const stats = dash?.stats || {};
   const errMsg = error ? (error as Error).message || "Hors ligne" : "";
@@ -109,6 +111,13 @@ export default function Home({
       },
     ],
   });
+
+  useEffect(() => {
+    api
+      .notifications()
+      .then((list) => setNotifs(Array.isArray(list) ? list.slice(0, 6) : []))
+      .catch(() => setNotifs([]));
+  }, [dash]);
 
   return (
     <BrandBackground dark={!!dark}>
@@ -270,6 +279,49 @@ export default function Home({
                   )}
                 </Card>
               </StaggerItem>
+
+              {notifs.length > 0 ? (
+                <StaggerItem index={3}>
+                  <Card colors={colors}>
+                    <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "800", marginBottom: 8 }}>
+                      NOTIFICATIONS
+                    </Text>
+                    {notifs.map((n: any) => (
+                      <PressScale
+                        key={n.id}
+                        onPress={() => {
+                          if (!n.read_at && !n.is_read) void api.markNotifRead(n.id);
+                          const t = notificationTarget(n);
+                          if (t.screen === "Patient") {
+                            onOpenPatient(t.params.patientId);
+                          } else if (t.screen === "Agenda") {
+                            onNavigate("agenda");
+                          } else if (t.screen === "LaboFile") {
+                            onNavigate("LaboFile" as HomeNavTarget);
+                          } else if (t.screen === "UrgencePro") {
+                            onNavigate("UrgencePro" as HomeNavTarget);
+                          } else {
+                            onNavigate("recherche");
+                          }
+                        }}
+                        style={{
+                          paddingVertical: 10,
+                          borderBottomWidth: 1,
+                          borderBottomColor: colors.border,
+                          opacity: n.read_at || n.is_read ? 0.7 : 1,
+                        }}
+                      >
+                        <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>
+                          {n.title}
+                        </Text>
+                        <Text style={{ color: colors.muted, fontSize: 12 }} numberOfLines={2}>
+                          {n.body}
+                        </Text>
+                      </PressScale>
+                    ))}
+                  </Card>
+                </StaggerItem>
+              ) : null}
             </>
           )}
         </ScrollView>

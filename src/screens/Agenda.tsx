@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { appAlert } from "../components/AppDialog";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Button, Card, Field, Header, SectionLabel } from "../ui";
 import { C, ProUser, darkC } from "../theme";
 import { api } from "../api";
@@ -41,6 +41,7 @@ export default function Agenda({
   dark?: boolean;
 }) {
   const colors = dark ? darkC : C;
+  const navigation = useNavigation<any>();
   const canWrite = WRITE_ROLES.has(user.role);
   const canRead = READ_ROLES.has(user.role) || canWrite;
 
@@ -403,7 +404,7 @@ export default function Agenda({
                     </Text>
                   </View>
                 </View>
-                {canWrite && a.statut !== "annule" && a.statut !== "termine" ? (
+                    {canWrite && a.statut !== "annule" && a.statut !== "termine" ? (
                   <View style={{ flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                     {(isMedecin || user.role === "admin") &&
                     a.statut === "planifie" &&
@@ -420,6 +421,27 @@ export default function Agenda({
                             await load({ silent: true });
                           } catch (e: any) {
                             appAlert("Erreur", e.message || "Confirmation impossible");
+                          }
+                        }}
+                      />
+                    ) : null}
+                    {(isMedecin || user.role === "admin") && a.statut === "confirme" ? (
+                      <Button
+                        title="Démarrer la consultation"
+                        icon="play-circle-outline"
+                        compact
+                        color={C.blue}
+                        onPress={async () => {
+                          try {
+                            const c = await api.demarrerConsultation(a.id);
+                            hapticSuccess();
+                            await load({ silent: true });
+                            const pid = c?.patient || a.patient;
+                            if (pid) {
+                              navigation.getParent()?.navigate("Patient", { patientId: pid });
+                            }
+                          } catch (e: any) {
+                            appAlert("Erreur", e.message || "Impossible de démarrer");
                           }
                         }}
                       />

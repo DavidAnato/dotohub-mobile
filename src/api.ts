@@ -81,6 +81,30 @@ async function authHeaders(): Promise<Record<string, string>> {
 }
 
 async function request(path: string, options: RequestInit = {}, retry = true): Promise<Response> {
+  const method = String(options.method || "GET").toUpperCase();
+  const navOffline =
+    typeof navigator !== "undefined" &&
+    typeof navigator.onLine === "boolean" &&
+    !navigator.onLine;
+  if (
+    navOffline &&
+    (method === "POST" || method === "PATCH" || method === "PUT") &&
+    path.startsWith("/api/") &&
+    !path.includes("/auth/")
+  ) {
+    const { enqueueOffline } = await import("./offlineQueue");
+    let body: unknown;
+    try {
+      body = options.body ? JSON.parse(String(options.body)) : undefined;
+    } catch {
+      body = undefined;
+    }
+    await enqueueOffline({ method: method as "POST" | "PATCH" | "PUT", path, body });
+    return new Response(JSON.stringify({ queued: true, offline: true }), {
+      status: 202,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   const headers = {
     ...(await authHeaders()),
     ...(options.headers as Record<string, string> | undefined),
@@ -163,10 +187,18 @@ export const api = {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.detail || "Impossible d'enregistrer le PIN.");
     }
+    await storage.saveLocalPin(pin);
     return res.json();
   },
 
   async verifyPin(pin: string) {
+    if (await storage.matchLocalPin(pin)) {
+      void request("/api/auth/verify-pin/", {
+        method: "POST",
+        body: JSON.stringify({ pin }),
+      }).catch(() => {});
+      return { unlocked: true };
+    }
     const res = await request("/api/auth/verify-pin/", {
       method: "POST",
       body: JSON.stringify({ pin }),
@@ -183,6 +215,9 @@ export const api = {
     last_name?: string;
     telephone?: string;
     email?: string;
+    specialite?: string;
+    structure_principale?: number | null;
+    structure_ids?: number[];
   }): Promise<ProUser> {
     const user = normalizeUser(
       await requestJson<ProUser>("/api/auth/me/", {
@@ -428,6 +463,81 @@ export const api = {
     });
   },
 
+  async hospitals() {
+    return requestJson("/api/auth/hospitals/");
+  },
+
+  async examCatalog() {
+    return requestJson("/api/exam-catalog/");
+  },
+
+  async examOrders(params?: Record<string, string | number>) {
+    const q = params
+      ? "?" + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString()
+      : "";
+    return requestJson(`/api/exam-orders/${q}`);
+  },
+
+  async createExamOrder(body: any) {
+    return requestJson("/api/exam-orders/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  async demarrerConsultation(appointmentId: number) {
+    return requestJson(`/api/appointments/${appointmentId}/demarrer-consultation/`, {
+      method: "POST",
+    });
+  },
+
+  async examOrderAction(id: number, action: "recevoir" | "demarrer" | "cloturer" | "deposer-resultat", body?: any) {
+    return requestJson(`/api/exam-orders/${id}/${action}/`, {
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  },
+
+  async deposerResultat(
+    id: number,
+    fields: Record<string, string>,
+    file?: { uri: string; type?: string; name?: string } | null
+  ) {
+    const doUpload = async (): Promise<Response> => {
+      const token = await storage.getAccess();
+      if (!token) throw new Error(SESSION_EXPIRED_MSG);
+      const form = new FormData();
+      Object.entries(fields).forEach(([k, v]) => {
+        if (v != null && v !== "") form.append(k, v);
+      });
+      if (file?.uri) {
+        form.append("fichier", {
+          uri: file.uri,
+          type: file.type || "application/octet-stream",
+          name: file.name || "resultat.pdf",
+        } as any);
+      }
+      return fetch(`${API_URL}/api/exam-orders/${id}/deposer-resultat/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+    };
+    let res = await doUpload();
+    if (res.status === 401 && (await tryRefresh())) {
+      res = await doUpload();
+    }
+    if (res.status === 401) {
+      await notifySessionExpired();
+      throw new Error(SESSION_EXPIRED_MSG);
+    }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(formatApiError(data, "Dépôt du résultat impossible."));
+    }
+    return res.json();
+  },
+
   async annulerConsultation(id: number) {
     return requestJson(`/api/consultations/${id}/annuler/`, { method: "POST" });
   },
@@ -612,6 +722,17 @@ export const api = {
     } catch {
       return 0;
     }
+  },
+
+  async markNotifRead(id: number) {
+    return requestJson(`/api/notifications/${id}/read/`, { method: "POST" });
+  },
+
+  async registerDeviceToken(token: string, platform: string, app = "dotohub") {
+    return requestJson("/api/device-tokens/", {
+      method: "POST",
+      body: JSON.stringify({ token, platform, app }),
+    }).catch(() => null);
   },
 
   eventsUrl(access: string) {

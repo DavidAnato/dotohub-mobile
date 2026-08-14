@@ -55,6 +55,7 @@ export type ProUser = {
   photo_url?: string | null;
   photo_required?: boolean;
   pin_set?: boolean;
+  specialite?: string;
   structures?: { id?: number; nom: string }[];
   structure_principale?: number | null;
 };

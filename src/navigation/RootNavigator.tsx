@@ -35,6 +35,7 @@ import { ConsentWaitingView } from "../components/ConsentWaiting";
 import { BrandBackground } from "../motion";
 import { Header } from "../ui";
 import type { MainTabParamList, RootStackParamList } from "./types";
+import { notificationTarget, subscribePushNavigation, takePendingPush } from "../notifRoutes";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -109,7 +110,7 @@ function OfflineBanner() {
     >
       <Ionicons name="cloud-offline-outline" size={16} color={colors.amber} />
       <Text style={{ color: colors.amber, fontWeight: "700", fontSize: 12, flex: 1 }}>
-        Hors ligne — cache patients / dossiers
+        Hors ligne — cache local, file d'actions rejouée à la reconnexion
       </Text>
     </View>
   );
@@ -453,6 +454,25 @@ export function RootNavigator() {
   const phase = useAppStore((s) => s.phase);
   const user = useAppStore((s) => s.user);
   const dark = useAppStore((s) => s.dark);
+  const navRef = useRef<any>(null);
+
+  useEffect(() => {
+    return subscribePushNavigation();
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const data = takePendingPush();
+      if (!data || !navRef.current) return;
+      const t = notificationTarget({ ...data, payload: data });
+      try {
+        navRef.current.navigate(t.screen, t.params);
+      } catch {
+        /* nav not ready */
+      }
+    }, 700);
+    return () => clearInterval(id);
+  }, []);
 
   const navTheme = dark
     ? {
@@ -480,14 +500,14 @@ export function RootNavigator() {
 
   if (phase === "login" || !user) {
     return (
-      <NavigationContainer theme={navTheme}>
+      <NavigationContainer theme={navTheme} ref={navRef}>
         <LoginOnly />
       </NavigationContainer>
     );
   }
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer theme={navTheme} ref={navRef}>
       <MainNavigator />
     </NavigationContainer>
   );
