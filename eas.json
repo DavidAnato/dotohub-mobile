@@ -14,7 +14,8 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "autoIncrement": true
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://doto-backend-71tk.onrender.com",
