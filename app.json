@@ -3,7 +3,7 @@
     "name": "DotoHub Mobile",
     "slug": "dotohub-mobile",
     "scheme": "dotohub",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -66,6 +66,15 @@
           "cameraPermission": "Autoriser DotoHub à utiliser la caméra pour scanner les DotoCard."
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Autoriser DotoHub à accéder aux photos.",
+          "cameraPermission": "Autoriser DotoHub à prendre une photo."
+        }
+      ],
+      "expo-font",
+      "expo-asset",
       "@react-native-community/datetimepicker"
     ],
     "extra": {
