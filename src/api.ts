@@ -664,6 +664,10 @@ export const api = {
     });
   },
 
+  async deleteAssurance(patientId: number) {
+    return requestJson(`/api/patients/${patientId}/assurance/`, { method: "DELETE" });
+  },
+
   async scanDotoCard(token: string, emergency = false) {
     return requestJson("/api/dodocards/scan/", {
       method: "POST",

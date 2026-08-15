@@ -29,6 +29,7 @@ import {
   StaggerItem,
 } from "../motion";
 import { Avatar } from "../components/Avatar";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePullRefresh } from "../hooks/usePullRefresh";
 import { qk } from "../queries/keys";
 import {
@@ -54,6 +55,17 @@ const FULL_ACCESS_ROLES = new Set([
   "receptionniste",
 ]);
 
+function pickNextAppointment(list: any[] | undefined) {
+  if (!list?.length) return null;
+  const now = Date.now();
+  const upcoming = list
+    .filter((a) => a.statut !== "annule" && a.statut !== "termine" && a.debut)
+    .map((a) => ({ a, t: new Date(a.debut).getTime() }))
+    .filter((x) => !Number.isNaN(x.t) && x.t >= now - 60 * 60 * 1000)
+    .sort((x, y) => x.t - y.t);
+  return upcoming[0]?.a ?? null;
+}
+
 export default function PatientDossier({
   patientId,
   user,
@@ -69,6 +81,15 @@ export default function PatientDossier({
   const tabs = ROLE_TABS[user.role] || ["constantes"];
   const [tab, setTab] = useState(tabs[0]);
   const { data: patient, isLoading: loading, refetch } = usePatientQuery(patientId);
+  const qc = useQueryClient();
+  const { data: patientAppts } = useQuery({
+    queryKey: ["appointments", "patient", patientId],
+    queryFn: async () => {
+      const list = await api.appointments({ patient: patientId });
+      return Array.isArray(list) ? list : [];
+    },
+  });
+  const nextRdv = pickNextAppointment(patientAppts);
   const storeOnline = useAppStore((s) => s.online);
   const offline = !storeOnline && !!(patient as any)?._offline;
   const fromCache = !!(patient as any)?._fromCache || (!!offline && !!(patient as any)?._offline);
@@ -138,6 +159,7 @@ export default function PatientDossier({
         body.professionnel = Number(medecinId);
       }
       await api.createAppointment(body);
+      void qc.invalidateQueries({ queryKey: ["appointments"] });
       setShowRdv(false);
       setMotif("Consultation");
       setDebut(defaultRdvDate());
@@ -515,6 +537,12 @@ export default function PatientDossier({
           refreshControl={refreshControl}
         >
           {patient.urgence ? <UrgenceBanner u={patient.urgence} colors={colors} /> : null}
+          <NextRdvCard
+            nextRdv={nextRdv}
+            colors={colors}
+            canWrite={canWriteRdv}
+            onPlan={() => setShowRdv(true)}
+          />
           <View style={{ paddingHorizontal: 16, gap: 12, marginTop: 8 }}>
             <Card colors={colors}>
               <Text style={{ color: colors.text, fontWeight: "700", marginBottom: 8 }}>
@@ -582,6 +610,12 @@ export default function PatientDossier({
         ) : null}
         {rdvModal}
         {patient.urgence ? <UrgenceBanner u={patient.urgence} colors={colors} /> : null}
+        <NextRdvCard
+          nextRdv={nextRdv}
+          colors={colors}
+          canWrite={canWriteRdv}
+          onPlan={() => setShowRdv(true)}
+        />
 
         <View style={{ height: 40, marginBottom: 4 }}>
           <ScrollView
@@ -955,6 +989,55 @@ export default function PatientDossier({
   );
 }
 
+function NextRdvCard({
+  nextRdv,
+  colors,
+  canWrite,
+  onPlan,
+}: {
+  nextRdv: any;
+  colors: any;
+  canWrite: boolean;
+  onPlan: () => void;
+}) {
+  const when = nextRdv?.debut
+    ? new Date(nextRdv.debut).toLocaleString("fr-FR", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+  return (
+    <Card colors={colors} style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 4 }}>
+      <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "800", letterSpacing: 0.4 }}>
+        PROCHAIN RDV
+      </Text>
+      <Text style={{ color: colors.text, fontWeight: "800", fontSize: 15, marginTop: 4 }}>
+        {when || "Aucun rendez-vous à venir"}
+      </Text>
+      <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+        {nextRdv
+          ? [nextRdv.professionnel_nom ? `Dr ${nextRdv.professionnel_nom}` : "Réception", nextRdv.structure_nom]
+              .filter(Boolean)
+              .join(" · ") || nextRdv.motif || "Consultation"
+          : "Planifiez depuis cette fiche ou l'agenda"}
+      </Text>
+      {canWrite ? (
+        <View style={{ marginTop: 10 }}>
+          <Button
+            title={nextRdv ? "Nouveau RDV" : "Planifier"}
+            outline
+            color={C.navy}
+            onPress={onPlan}
+          />
+        </View>
+      ) : null}
+    </Card>
+  );
+}
+
 function WriteConstantes({
   patientId,
   colors,
@@ -1091,6 +1174,34 @@ function WriteAssurance({
           }
         }}
       />
+      {initial ? (
+        <Button
+          title="Retirer l'assurance"
+          outline
+          color={C.emergency}
+          loading={busy}
+          onPress={() => {
+            appAlert("Retirer l'assurance", "La carte passera en Non assuré.", [
+              { text: "Annuler", style: "cancel" },
+              {
+                text: "Retirer",
+                style: "destructive",
+                onPress: async () => {
+                  setBusy(true);
+                  try {
+                    await api.deleteAssurance(patientId);
+                    onDone();
+                  } catch (e: any) {
+                    appAlert("Erreur", e.message);
+                  } finally {
+                    setBusy(false);
+                  }
+                },
+              },
+            ]);
+          }}
+        />
+      ) : null}
     </Card>
   );
 }

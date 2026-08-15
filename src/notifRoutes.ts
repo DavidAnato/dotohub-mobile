@@ -19,7 +19,10 @@ const KIND_TO_TYPE: Record<string, string> = {
   rdv_created: "appointment",
   rdv_pending: "appointment",
   rdv_confirmed: "appointment",
+  rdv_updated: "appointment",
   rdv_annule: "appointment",
+  insurance_updated: "dossier_updated",
+  insurance_removed: "dossier_updated",
   access_request: "access_request",
 };
 

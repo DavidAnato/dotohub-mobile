@@ -1,11 +1,12 @@
 /** SSE hub mobile — invalidation React Query + kick dossier si accès révoqué. */
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { storage } from "../storage";
 import { qk } from "../queries/keys";
 import { useAppStore } from "../store/appStore";
+import { connectSse } from "../sse";
 
 export type HubMobileSseEvent = {
   type: string;
@@ -79,6 +80,17 @@ function handleHubEvent(qc: QueryClient, ev: HubMobileSseEvent) {
     String(ev.payload?.kind || "").startsWith("rdv")
   ) {
     void qc.invalidateQueries({ queryKey: ["appointments"] });
+    void qc.invalidateQueries({ queryKey: qk.dashboard });
+  }
+
+  if (
+    ev.type === "insurance_updated" ||
+    ev.payload?.section === "assurance" ||
+    String(ev.payload?.kind || "").startsWith("insurance")
+  ) {
+    invalidatePatientMedical(qc, pid);
+    void qc.invalidateQueries({ queryKey: qk.dashboard });
+    void qc.invalidateQueries({ queryKey: ["dodocards"] });
   }
 
   if (
@@ -97,6 +109,7 @@ function handleHubEvent(qc: QueryClient, ev: HubMobileSseEvent) {
   if (ev.type === "patient_list") {
     void qc.invalidateQueries({ queryKey: qk.dashboard });
     void qc.invalidateQueries({ queryKey: ["patients"] });
+    invalidatePatientMedical(qc, pid);
   }
 
   if (ev.type === "access_granted" || ev.type === "dodocard_scan") {
@@ -112,18 +125,18 @@ function handleHubEvent(qc: QueryClient, ev: HubMobileSseEvent) {
 }
 
 /**
- * Temps réel DotoHub mobile : SSE (web/polyfill) + poll léger en secours.
+ * Temps réel DotoHub mobile : SSE (EventSource web + XHR natif) + poll léger en secours.
  * Ne remplace pas useConsentWait (flux consentement dédié).
  */
 export function useHubRealtime(enabled: boolean) {
   const qc = useQueryClient();
   const online = useAppStore((s) => s.online);
+  const closeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!enabled || !online) return;
 
     let closed = false;
-    let es: EventSource | null = null;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let poll: ReturnType<typeof setInterval> | undefined;
     let appSub: { remove: () => void } | undefined;
@@ -134,37 +147,32 @@ export function useHubRealtime(enabled: boolean) {
       void qc.invalidateQueries({ queryKey: ["appointments"] });
     };
 
-    const connectSse = async () => {
-      if (closed || typeof EventSource === "undefined") return;
+    const connect = async () => {
+      if (closed) return;
       const token = await storage.getAccess();
       if (!token || closed) return;
-      try {
-        es?.close();
-        es = new EventSource(api.eventsUrl(token));
-        es.onmessage = (msg) => {
-          try {
-            handleHubEvent(qc, JSON.parse(msg.data) as HubMobileSseEvent);
-          } catch {
-            /* ignore */
-          }
-        };
-        es.onerror = () => {
-          es?.close();
-          es = null;
-          if (!closed) retry = setTimeout(() => void connectSse(), SSE_RETRY_MS);
-        };
-      } catch {
-        /* poll only */
-      }
+      closeRef.current?.();
+      closeRef.current = connectSse(
+        api.eventsUrl(token),
+        (data) => {
+          handleHubEvent(qc, data as HubMobileSseEvent);
+        },
+        {
+          onError: () => {
+            closeRef.current = null;
+            if (!closed) retry = setTimeout(() => void connect(), SSE_RETRY_MS);
+          },
+        }
+      );
     };
 
     tick();
     poll = setInterval(tick, POLL_MS);
-    void connectSse();
+    void connect();
     appSub = AppState.addEventListener("change", (s) => {
       if (s === "active") {
         tick();
-        void connectSse();
+        void connect();
       }
     });
 
@@ -173,7 +181,8 @@ export function useHubRealtime(enabled: boolean) {
       if (retry) clearTimeout(retry);
       if (poll) clearInterval(poll);
       appSub?.remove();
-      es?.close();
+      closeRef.current?.();
+      closeRef.current = null;
     };
   }, [enabled, online, qc]);
 }

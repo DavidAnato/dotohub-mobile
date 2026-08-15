@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import { api } from "../api";
 import { storage } from "../storage";
+import { connectSse } from "../sse";
 
 export type HubSseEvent = {
   type: string;
@@ -85,7 +86,7 @@ export function useConsentWait(
     let settled = false;
     let pollTimer: ReturnType<typeof setInterval> | undefined;
     let sseRetryTimer: ReturnType<typeof setTimeout> | undefined;
-    let es: EventSource | null = null;
+    let closeSse: (() => void) | null = null;
 
     const settle = (outcome: ConsentOutcome) => {
       if (closed || settled) return;
@@ -106,39 +107,26 @@ export function useConsentWait(
       }
     };
 
-    const connectSse = async () => {
+    const connect = async () => {
       if (closed || settled) return;
-      if (typeof EventSource === "undefined") return;
-
       const token = await storage.getAccess();
       if (!token || closed || settled) return;
-
-      try {
-        es?.close();
-        es = new EventSource(api.eventsUrl(token));
-        es.onmessage = (msg) => {
-          try {
-            const data = JSON.parse(msg.data) as HubSseEvent;
-            const outcome = outcomeFromSse(data, opts);
-            if (outcome) settle(outcome);
-          } catch {
-            /* ignore malformed */
-          }
-        };
-        es.onerror = () => {
-          es?.close();
-          es = null;
+      closeSse?.();
+      closeSse = connectSse(api.eventsUrl(token), (raw) => {
+        const outcome = outcomeFromSse(raw as HubSseEvent, opts);
+        if (outcome) settle(outcome);
+      }, {
+        onError: () => {
+          closeSse = null;
           if (closed || settled) return;
           sseRetryTimer = setTimeout(() => {
-            void connectSse();
+            void connect();
           }, SSE_RETRY_MS);
-        };
-      } catch {
-        /* EventSource unavailable — poll only */
-      }
+        },
+      });
     };
 
-    void connectSse();
+    void connect();
     void pollOnce();
     pollTimer = setInterval(() => {
       void pollOnce();
@@ -148,7 +136,7 @@ export function useConsentWait(
       closed = true;
       if (pollTimer) clearInterval(pollTimer);
       if (sseRetryTimer) clearTimeout(sseRetryTimer);
-      es?.close();
+      closeSse?.();
     };
   }, [enabled, opts.patientId, opts.accessRequestId]);
 }

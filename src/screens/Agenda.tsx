@@ -20,6 +20,7 @@ import {
 } from "../components/DateTimePickerField";
 import PatientSelectSearch from "../components/PatientSelectSearch";
 import { Avatar } from "../components/Avatar";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePullRefresh } from "../hooks/usePullRefresh";
 
 /** Création / gestion RDV : médecins, réceptionniste, admin */
@@ -44,9 +45,19 @@ export default function Agenda({
   const navigation = useNavigation<any>();
   const canWrite = WRITE_ROLES.has(user.role);
   const canRead = READ_ROLES.has(user.role) || canWrite;
+  const qc = useQueryClient();
 
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const apptsQ = useQuery({
+    queryKey: ["appointments"],
+    enabled: canRead,
+    queryFn: async () => {
+      const list = await api.appointments();
+      return Array.isArray(list) ? list : [];
+    },
+  });
+  const items = apptsQ.data || [];
+  const loading = apptsQ.isLoading && !apptsQ.data;
+
   const [busy, setBusy] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [patientId, setPatientId] = useState("");
@@ -58,22 +69,10 @@ export default function Agenda({
   const isReception = user.role === "receptionniste";
   const isMedecin = user.role === "medecin";
 
-  const load = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!canRead) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
-    if (!opts?.silent) setLoading(true);
-    try {
-      const list = await api.appointments();
-      setItems(Array.isArray(list) ? list : []);
-    } catch (e: any) {
-      appAlert("Erreur", e.message || "Agenda indisponible");
-    } finally {
-      if (!opts?.silent) setLoading(false);
-    }
-  }, [canRead]);
+  const load = useCallback(async () => {
+    if (!canRead) return;
+    await qc.invalidateQueries({ queryKey: ["appointments"] });
+  }, [canRead, qc]);
 
   useFocusEffect(
     useCallback(() => {
@@ -117,7 +116,7 @@ export default function Agenda({
       setRdvMode("medecin");
       setShowForm(false);
       hapticSuccess();
-      await load({ silent: true });
+      await load();
     } catch (e: any) {
       appAlert("Erreur", e.message || "Création impossible");
     } finally {
@@ -135,7 +134,7 @@ export default function Agenda({
           try {
             await api.updateAppointment(id, { statut });
             hapticSuccess();
-            await load({ silent: true });
+            await load();
           } catch (e: any) {
             appAlert("Erreur", e.message || "Mise à jour impossible");
           }
@@ -154,7 +153,7 @@ export default function Agenda({
   };
 
   const { refreshControl } = usePullRefresh({
-    refetch: [() => load({ silent: true })],
+    refetch: [() => load()],
     progressBackgroundColor: colors.white,
   });
 
@@ -418,7 +417,7 @@ export default function Agenda({
                           try {
                             await api.confirmerAppointment(a.id);
                             hapticSuccess();
-                            await load({ silent: true });
+                            await load();
                           } catch (e: any) {
                             appAlert("Erreur", e.message || "Confirmation impossible");
                           }
@@ -435,7 +434,7 @@ export default function Agenda({
                           try {
                             const c = await api.demarrerConsultation(a.id);
                             hapticSuccess();
-                            await load({ silent: true });
+                            await load();
                             const pid = c?.patient || a.patient;
                             if (pid) {
                               navigation.getParent()?.navigate("Patient", { patientId: pid });
