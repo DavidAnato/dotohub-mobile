@@ -37,7 +37,8 @@ export function notificationTarget(n: NotifLike): HubNavTarget {
   const payload = (n.payload || n) as Record<string, unknown>;
   const kind = String(payload.kind || "");
   const type = KIND_TO_TYPE[kind] || n.type || n.notif_type || String(payload.type || "system");
-  const patientId = Number(payload.patient_id ?? n.patient_id || 0) || null;
+  const rawPatientId = payload.patient_id ?? n.patient_id;
+  const patientId = Number(rawPatientId) || null;
 
   if (type === "emergency" && patientId) {
     return { screen: "UrgencePro", params: { patientId } };
