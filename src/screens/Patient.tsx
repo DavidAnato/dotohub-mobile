@@ -609,7 +609,6 @@ export default function PatientDossier({
           </Text>
         ) : null}
         {rdvModal}
-        {patient.urgence ? <UrgenceBanner u={patient.urgence} colors={colors} /> : null}
         <NextRdvCard
           nextRdv={nextRdv}
           colors={colors}
@@ -666,6 +665,13 @@ export default function PatientDossier({
           contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}
           refreshControl={refreshControl}
         >
+          {patient.urgence ? (
+            <UrgenceBanner
+              u={patient.urgence}
+              colors={colors}
+              style={{ marginHorizontal: 0, marginTop: 0, marginBottom: 0 }}
+            />
+          ) : null}
           {tab === "examens" && bons.length > 0 ? (
             <Card colors={colors} style={{ gap: 8 }}>
               <Text style={{ fontWeight: "800", color: colors.text }}>Demandes d'examens</Text>
@@ -771,6 +777,19 @@ export default function PatientDossier({
                       <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
                         {item.statut_label || item.statut}
                       </Text>
+                      {(item.medicaments || []).map((m: any) => (
+                        <Text
+                          key={m.id || m.nom}
+                          style={{ color: colors.text, fontSize: 13, marginTop: 6, lineHeight: 19 }}
+                        >
+                          • {summarizeMed(m)}
+                        </Text>
+                      ))}
+                      {item.instructions ? (
+                        <Text style={{ color: colors.muted, fontSize: 12, marginTop: 6 }}>
+                          {item.instructions}
+                        </Text>
+                      ) : null}
                       {item.statut === "active" &&
                       (user.role === "medecin" || user.role === "admin") ? (
                         <Button
@@ -1644,6 +1663,7 @@ function WriteBon({
   const [open, setOpen] = useState(false);
   const [catalog, setCatalog] = useState<{ code?: string; label?: string; nom?: string; categorie?: string }[]>([]);
   const [picked, setPicked] = useState<string[]>([]);
+  const [autreExamen, setAutreExamen] = useState("");
   const [motif, setMotif] = useState("");
   const [observations, setObservations] = useState("");
   const [labo, setLabo] = useState("");
@@ -1670,9 +1690,20 @@ function WriteBon({
       appAlert("Examens", "Sélectionnez au moins un examen.");
       return;
     }
+    if (picked.includes("autre") && !autreExamen.trim()) {
+      appAlert("Examens", "Précisez le type d'examen (Autre).");
+      return;
+    }
     setBusy(true);
     try {
       const lignes = picked.map((code) => {
+        if (code === "autre") {
+          return {
+            code: "autre",
+            type_examen: autreExamen.trim(),
+            categorie: "autres",
+          };
+        }
         const item = catalog.find((c) => (c.code || labelOf(c)) === code);
         return {
           code: item?.code || "",
@@ -1688,6 +1719,7 @@ function WriteBon({
         lignes,
       });
       setPicked([]);
+      setAutreExamen("");
       setMotif("");
       setObservations("");
       setLabo("");
@@ -1746,6 +1778,7 @@ function WriteBon({
                     { code: "nfs", label: "NFS" },
                     { code: "crp", label: "CRP" },
                     { code: "glycemie", label: "Glycémie" },
+                    { code: "autre", label: "Autre examen", categorie: "autres" },
                   ]
               ).map((c) => {
                   const key = c.code || labelOf(c);
@@ -1771,6 +1804,21 @@ function WriteBon({
                   );
                 }
               )}
+              {picked.includes("autre") ? (
+                <TextInput
+                  value={autreExamen}
+                  onChangeText={setAutreExamen}
+                  placeholder="Préciser l'examen (saisie libre)"
+                  placeholderTextColor={colors.muted}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 12,
+                    padding: 12,
+                    color: colors.text,
+                  }}
+                />
+              ) : null}
               <TextInput
                 value={motif}
                 onChangeText={setMotif}

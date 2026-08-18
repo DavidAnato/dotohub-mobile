@@ -131,16 +131,36 @@ export function emptyMedLine(): MedLine {
   };
 }
 
-export function summarizeMed(m: MedLine): string {
+export function summarizeMed(m: {
+  nom?: string;
+  dosage?: string;
+  forme?: string;
+  quantite?: string;
+  unites_par_prise?: string;
+  frequence_par_jour?: string;
+  frequence?: string;
+  duree_jours?: number | "";
+  moment?: string;
+  instructions?: string;
+}): string {
   const poso =
     m.unites_par_prise && m.frequence_par_jour
       ? `${m.unites_par_prise} × ${m.frequence_par_jour}`
-      : "";
+      : m.frequence || "";
   const duree = m.duree_jours
     ? `pendant ${m.duree_jours} jour${Number(m.duree_jours) > 1 ? "s" : ""}`
     : "";
   const moment = MEDICAMENT_MOMENTS.find((x) => x.value === m.moment)?.label;
-  return [m.nom, m.dosage, m.forme, m.quantite, poso, duree, moment && moment !== "—" ? moment : ""]
+  return [
+    m.nom,
+    m.dosage,
+    m.forme,
+    m.quantite,
+    poso,
+    duree,
+    moment && moment !== "—" ? moment : "",
+    m.instructions,
+  ]
     .filter(Boolean)
     .join(" — ");
 }

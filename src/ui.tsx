@@ -402,7 +402,15 @@ function UrgenceSnapRow({
   );
 }
 
-export function UrgenceBanner({ u, colors = C }: { u: any; colors?: ThemeColors }) {
+export function UrgenceBanner({
+  u,
+  colors = C,
+  style,
+}: {
+  u: any;
+  colors?: ThemeColors;
+  style?: StyleProp<ViewStyle>;
+}) {
   if (!u) return null;
   const allergies = (u.allergies || []).length
     ? (u.allergies || []).join(" · ")
@@ -421,16 +429,19 @@ export function UrgenceBanner({ u, colors = C }: { u: any; colors?: ThemeColors 
 
   return (
     <View
-      style={{
-        backgroundColor: colors.white,
-        borderRadius: 16,
-        marginHorizontal: space.md,
-        marginTop: space.sm,
-        marginBottom: space.sm,
-        borderWidth: 1,
-        borderColor: colors.border,
-        overflow: "hidden",
-      }}
+      style={[
+        {
+          backgroundColor: colors.white,
+          borderRadius: 16,
+          marginHorizontal: space.md,
+          marginTop: space.sm,
+          marginBottom: space.sm,
+          borderWidth: 1,
+          borderColor: colors.border,
+          overflow: "hidden",
+        },
+        style,
+      ]}
     >
       <View style={{ height: 3, backgroundColor: C.emergency }} />
       <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 }}>
