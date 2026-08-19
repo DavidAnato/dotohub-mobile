@@ -10,7 +10,8 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { C, brandBlue, brandNavy, darkC } from "../theme";
+import { C, accent, brandBlue, brandNavy, darkC } from "../theme";
+import { useScreenInsets } from "../safeArea";
 
 export const PIN_LEN = 4;
 const DEFAULT_PIN_LEN = PIN_LEN;
@@ -252,6 +253,7 @@ export function PinLockScreen({
   mode = "unlock",
 }: LockProps) {
   const colors = dark ? darkC : C;
+  const { headerPad, scrollBottom } = useScreenInsets();
   const [pin, setPin] = useState("");
   const [confirm, setConfirm] = useState("");
   const [step, setStep] = useState<"pin" | "confirm">(mode === "confirm" ? "confirm" : "pin");
@@ -304,37 +306,37 @@ export function PinLockScreen({
     <View
       style={{
         flex: 1,
-        backgroundColor: dark ? "#0A0A0A" : "#F0F4F7",
+        backgroundColor: dark ? "#0A0A0A" : "#F4FBFC",
         alignItems: "center",
         justifyContent: "center",
-        padding: 28,
+        paddingHorizontal: 28,
+        paddingTop: headerPad,
+        paddingBottom: Math.max(scrollBottom, 28),
       }}
     >
       <View
         style={{
-          width: 64,
-          height: 64,
-          borderRadius: 20,
-          backgroundColor: dark ? "#1A1A1A" : C.lightBlue,
+          width: 56,
+          height: 56,
+          borderRadius: 18,
+          backgroundColor: dark ? "rgba(43,179,188,0.16)" : "rgba(43,179,188,0.12)",
           alignItems: "center",
           justifyContent: "center",
-          marginBottom: 20,
-          borderWidth: 1,
-          borderColor: colors.border,
+          marginBottom: 22,
         }}
       >
         <Ionicons
           name={mode === "setup" ? "key-outline" : "lock-closed-outline"}
-          size={28}
-          color={brandBlue}
+          size={26}
+          color={accent}
         />
       </View>
       <Text
         style={{
           color: colors.text,
-          fontSize: 22,
+          fontSize: 24,
           fontWeight: "800",
-          letterSpacing: -0.3,
+          letterSpacing: -0.5,
           textAlign: "center",
         }}
       >
@@ -343,11 +345,12 @@ export function PinLockScreen({
       <Text
         style={{
           color: colors.muted,
-          fontSize: 14,
-          marginTop: 8,
-          marginBottom: 28,
+          fontSize: 15,
+          marginTop: 10,
+          marginBottom: 32,
           textAlign: "center",
-          lineHeight: 20,
+          lineHeight: 22,
+          paddingHorizontal: 8,
         }}
       >
         {mode === "setup" && step === "confirm"

@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Button, Field } from "../ui";
-import { C, ProUser, darkC } from "../theme";
+import { AuthScreenHeader, Button, Field } from "../ui";
+import { C, ProUser, accent, brandNavy, darkC } from "../theme";
 import { useLoginMutation } from "../queries/hooks";
-import { CardDecor, ScreenEnter, StaggerItem } from "../motion";
+import { ScreenEnter, StaggerItem } from "../motion";
+import { useScreenInsets } from "../safeArea";
 import Register from "./Register";
 
 export default function Login({
@@ -15,6 +16,7 @@ export default function Login({
   dark?: boolean;
 }) {
   const colors = dark ? darkC : C;
+  const { scrollBottom } = useScreenInsets();
   const [username, setUsername] = useState("medecin");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -35,8 +37,8 @@ export default function Login({
   };
 
   const grad = dark
-    ? ([colors.bg, "#162032", colors.white] as const)
-    : (["#E8F2F5", "#F1F5F9", "#FFFFFF"] as const);
+    ? ([colors.bg, "#121212", colors.white] as const)
+    : (["#F4FBFC", "#F7FAFB", "#FFFFFF"] as const);
 
   if (mode === "register") {
     return <Register dark={dark} onDone={onLogin} onBack={() => setMode("login")} />;
@@ -45,35 +47,25 @@ export default function Login({
   return (
     <LinearGradient colors={[...grad]} style={{ flex: 1 }}>
       <ScreenEnter>
-        <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 48, paddingBottom: 24, gap: 16 }}>
-          <StaggerItem index={0}>
-            <View style={{ alignItems: "center", marginBottom: 28 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: scrollBottom, flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <AuthScreenHeader
+            colors={colors}
+            title="Connexion"
+            subtitle="Espace professionnels de santé"
+            brand={
               <Image
                 source={require("../../assets/logo-dotohub.png")}
-                style={{ width: 220, height: 52 }}
+                style={{ width: 180, height: 42, marginBottom: 18 }}
                 resizeMode="contain"
               />
-              <Text style={{ color: colors.muted, marginTop: 12, textAlign: "center", fontSize: 14 }}>
-                Espace professionnels de santé
-              </Text>
-            </View>
-          </StaggerItem>
+            }
+          />
 
-          <View
-            style={{
-              backgroundColor: colors.white,
-              borderRadius: 22,
-              padding: 18,
-              borderWidth: 1,
-              borderColor: colors.border,
-              shadowColor: "#1E3755",
-              shadowOpacity: 0.07,
-              shadowRadius: 14,
-              elevation: 2,
-              overflow: "hidden",
-            }}
-          >
-            <CardDecor variant="calm" dark={dark} />
+          <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
+            <StaggerItem index={0}>
               <Field
                 label="Identifiant"
                 value={username}
@@ -90,34 +82,35 @@ export default function Login({
                 colors={colors}
               />
               {error ? (
-                <Text style={{ color: C.emergency, fontWeight: "700", marginBottom: 12 }}>{error}</Text>
+                <Text style={{ color: C.emergency, fontWeight: "600", marginBottom: 14 }}>{error}</Text>
               ) : null}
               <Button
                 title="Se connecter"
                 onPress={submit}
                 loading={loginMut.isPending}
-                color={C.navy}
+                color={dark ? accent : brandNavy}
               />
-          </View>
+            </StaggerItem>
 
-          <Pressable onPress={() => setMode("register")} style={{ marginTop: 8 }}>
-            <Text style={{ textAlign: "center", color: C.teal, fontWeight: "800", fontSize: 14 }}>
-              Créer un compte professionnel
+            <Pressable onPress={() => setMode("register")} style={{ marginTop: 22 }}>
+              <Text style={{ textAlign: "center", color: colors.muted, fontSize: 14 }}>
+                Nouveau professionnel ?{" "}
+                <Text style={{ color: accent, fontWeight: "700" }}>Créer un compte</Text>
+              </Text>
+            </Pressable>
+
+            <Text
+              style={{
+                textAlign: "center",
+                color: colors.grey,
+                fontSize: 12,
+                marginTop: 28,
+                lineHeight: 18,
+              }}
+            >
+              Ex. medecin / Medecin123! · ambulancier / Ambulancier123!
             </Text>
-          </Pressable>
-
-          <Text
-            style={{
-              textAlign: "center",
-              color: colors.grey,
-              fontSize: 12,
-              marginTop: 24,
-              lineHeight: 18,
-            }}
-          >
-            Ex. medecin / Medecin123! · ambulancier / Ambulancier123!{"\n"}
-            Connexion : identifiant + mot de passe (sans OTP)
-          </Text>
+          </View>
         </ScrollView>
       </ScreenEnter>
     </LinearGradient>

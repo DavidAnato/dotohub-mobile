@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Button, Field, Header, PhoneField } from "../ui";
-import { C, darkC, ProUser } from "../theme";
+import { AuthScreenHeader, Button, Field, PhoneField } from "../ui";
+import { C, darkC, ProUser, accent } from "../theme";
 import { api } from "../api";
 import { PRO_ROLES, TYPE_EXERCICE } from "../constants";
 import { appAlert } from "../components/AppDialog";
@@ -117,43 +117,65 @@ export default function Register({
   };
 
   const grad = dark
-    ? ([colors.bg, "#162032", colors.white] as const)
-    : (["#E8F2F5", "#F1F5F9", "#FFFFFF"] as const);
+    ? ([colors.bg, "#121212", colors.white] as const)
+    : (["#F4FBFC", "#F7FAFB", "#FFFFFF"] as const);
 
   return (
     <LinearGradient colors={[...grad]} style={{ flex: 1 }}>
       <ScreenEnter>
-        <Header
-          title="Inscription professionnelle"
-          subtitle={step === 1 ? "Identité et identifiants" : "Type, établissement et autorisations"}
+        <AuthScreenHeader
+          colors={colors}
+          title={step === 1 ? "Votre identité" : "Votre exercice"}
+          subtitle={step === 1 ? "Nom, rôle et identifiants de compte." : "Type, établissement et autorisations."}
           onBack={step === 1 ? onBack : () => setStep(1)}
         />
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: scrollBottom, gap: 8 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: scrollBottom, gap: 4 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 8,
+              marginBottom: 16,
+            }}
+          >
+            <View
+              style={{
+                flex: 1,
+                height: 4,
+                borderRadius: 99,
+                backgroundColor: accent,
+              }}
+            />
+            <View
+              style={{
+                flex: 1,
+                height: 4,
+                borderRadius: 99,
+                backgroundColor: step === 2 ? accent : colors.border,
+              }}
+            />
+          </View>
           {step === 1 ? (
             <>
-              <Text style={{ color: colors.muted, marginBottom: 8, lineHeight: 20 }}>
-                Créez votre compte professionnel. Un administrateur validera ensuite l'affiliation.
-              </Text>
               <Field label="Nom" value={lastName} onChangeText={setLastName} colors={colors} />
               <Field label="Prénom" value={firstName} onChangeText={setFirstName} colors={colors} />
-              <Text style={{ color: colors.text, fontWeight: "800", fontSize: 12, letterSpacing: 0.4, marginBottom: 6 }}>
-                RÔLE
+              <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13, marginBottom: 8 }}>
+                Rôle
               </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                 {PRO_ROLES.map((r) => (
                   <Pressable
                     key={r.v}
                     onPress={() => setRole(r.v)}
                     style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      borderRadius: 10,
-                      backgroundColor: role === r.v ? C.teal : colors.white,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 999,
+                      backgroundColor: role === r.v ? "rgba(43,179,188,0.12)" : "transparent",
                       borderWidth: 1,
-                      borderColor: role === r.v ? C.teal : colors.border,
+                      borderColor: role === r.v ? accent : colors.border,
                     }}
                   >
-                    <Text style={{ color: role === r.v ? "#fff" : colors.text, fontWeight: "700", fontSize: 12 }}>
+                    <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13 }}>
                       {r.l}
                     </Text>
                   </Pressable>
@@ -181,31 +203,28 @@ export default function Register({
                 colors={colors}
                 secureTextEntry
               />
-              <Button title="Continuer" color={C.teal} onPress={goStep2} />
+              <Button title="Continuer" color={C.navy === colors.navy ? C.navy : accent} onPress={goStep2} />
             </>
           ) : (
             <>
-              <Text style={{ color: colors.muted, marginBottom: 8, lineHeight: 20 }}>
-                Renseignez votre type d'exercice. Un professionnel peut rattacher plusieurs établissements.
+              <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13, marginBottom: 8 }}>
+                Type d'exercice
               </Text>
-              <Text style={{ color: colors.text, fontWeight: "800", fontSize: 12, letterSpacing: 0.4, marginBottom: 6 }}>
-                TYPE
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                 {TYPE_EXERCICE.map((k) => (
                   <Pressable
                     key={k.v}
                     onPress={() => setKind(k.v)}
                     style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      borderRadius: 10,
-                      backgroundColor: kind === k.v ? C.teal : colors.white,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 999,
+                      backgroundColor: kind === k.v ? "rgba(43,179,188,0.12)" : "transparent",
                       borderWidth: 1,
-                      borderColor: kind === k.v ? C.teal : colors.border,
+                      borderColor: kind === k.v ? accent : colors.border,
                     }}
                   >
-                    <Text style={{ color: kind === k.v ? "#fff" : colors.text, fontWeight: "700", fontSize: 12 }}>
+                    <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13 }}>
                       {k.l}
                     </Text>
                   </Pressable>
@@ -279,7 +298,7 @@ export default function Register({
                   })}
                 </>
               ) : null}
-              <Button title="Créer le compte" loading={busy} color={C.teal} onPress={() => void submit()} />
+              <Button title="Créer le compte" loading={busy} color={dark ? accent : C.navy} onPress={() => void submit()} />
             </>
           )}
         </ScrollView>

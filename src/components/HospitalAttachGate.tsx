@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { C, darkC } from "../theme";
+import { C, darkC, accent } from "../theme";
 import { api } from "../api";
-import { Button, Field, Header, PhoneField } from "../ui";
+import { AuthScreenHeader, Button, Field, PhoneField } from "../ui";
 import { appAlert } from "./AppDialog";
 import { useScreenInsets } from "../safeArea";
 import { TYPE_EXERCICE } from "../constants";
@@ -81,30 +81,31 @@ export function HospitalAttachGate({
 
   return (
     <Modal visible={visible} animationType="fade" presentationStyle="fullScreen">
-      <View style={{ flex: 1, backgroundColor: dark ? "#0A0A0A" : "#F0F4F7" }}>
-        <Header title="Inscription professionnelle" subtitle="Type, établissement et autorisations" />
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: scrollBottom, gap: 8 }}>
-          <Text style={{ color: colors.muted, marginBottom: 8, lineHeight: 20 }}>
-            Renseignez votre type d'exercice. Un professionnel peut rattacher plusieurs établissements.
+      <View style={{ flex: 1, backgroundColor: dark ? "#0A0A0A" : "#F4FBFC" }}>
+        <AuthScreenHeader
+          colors={colors}
+          title="Votre exercice"
+          subtitle="Type, établissement et autorisations."
+        />
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: scrollBottom, gap: 4 }}>
+          <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13, marginBottom: 8 }}>
+            Type d'exercice
           </Text>
-          <Text style={{ color: colors.text, fontWeight: "800", fontSize: 12, letterSpacing: 0.4, marginBottom: 6 }}>
-            TYPE
-          </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
             {TYPE_EXERCICE.map((k) => (
               <Pressable
                 key={k.v}
                 onPress={() => setKind(k.v)}
                 style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 10,
-                  backgroundColor: kind === k.v ? C.teal : colors.white,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 999,
+                  backgroundColor: kind === k.v ? "rgba(43,179,188,0.12)" : "transparent",
                   borderWidth: 1,
-                  borderColor: kind === k.v ? C.teal : colors.border,
+                  borderColor: kind === k.v ? accent : colors.border,
                 }}
               >
-                <Text style={{ color: kind === k.v ? "#fff" : colors.text, fontWeight: "700", fontSize: 12 }}>
+                <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13 }}>
                   {k.l}
                 </Text>
               </Pressable>
@@ -161,7 +162,7 @@ export function HospitalAttachGate({
               })}
             </>
           ) : null}
-          <Button title="Valider" loading={busy} color={C.teal} onPress={() => void save()} />
+          <Button title="Valider" loading={busy} color={dark ? accent : C.navy} onPress={() => void save()} />
         </ScrollView>
       </View>
     </Modal>

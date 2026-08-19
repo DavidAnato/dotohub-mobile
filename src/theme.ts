@@ -2,7 +2,8 @@
 export const C = {
   navy: "#1E3755",
   blue: "#3E8295",
-  teal: "#3E8295",
+  teal: "#2BB3BC",
+  accent: "#2BB3BC",
   emerald: "#3E8295",
   lightTeal: "#E8F2F5",
   lightBlue: "#E8F2F5",
@@ -39,7 +40,8 @@ export const darkC = {
 
 /** Navy marque (headers / boutons) - ne change jamais en dark mode */
 export const brandNavy = "#1E3755";
-export const brandBlue = "#3E8295";
+export const brandBlue = "#2BB3BC";
+export const accent = "#2BB3BC";
 export const onBrand = "#FFFFFF";
 
 export type ProUser = {
