@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Image, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button, Field } from "../ui";
 import { C, ProUser, darkC } from "../theme";
 import { useLoginMutation } from "../queries/hooks";
 import { CardDecor, ScreenEnter, StaggerItem } from "../motion";
+import Register from "./Register";
 
 export default function Login({
   onLogin,
@@ -17,6 +18,7 @@ export default function Login({
   const [username, setUsername] = useState("medecin");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [mode, setMode] = useState<"login" | "register">("login");
   const loginMut = useLoginMutation();
 
   const submit = async () => {
@@ -35,6 +37,10 @@ export default function Login({
   const grad = dark
     ? ([colors.bg, "#162032", colors.white] as const)
     : (["#E8F2F5", "#F1F5F9", "#FFFFFF"] as const);
+
+  if (mode === "register") {
+    return <Register dark={dark} onDone={onLogin} onBack={() => setMode("login")} />;
+  }
 
   return (
     <LinearGradient colors={[...grad]} style={{ flex: 1 }}>
@@ -93,6 +99,12 @@ export default function Login({
                 color={C.navy}
               />
           </View>
+
+          <Pressable onPress={() => setMode("register")} style={{ marginTop: 8 }}>
+            <Text style={{ textAlign: "center", color: C.teal, fontWeight: "800", fontSize: 14 }}>
+              Créer un compte professionnel
+            </Text>
+          </Pressable>
 
           <Text
             style={{

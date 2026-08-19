@@ -163,6 +163,27 @@ export const api = {
     return user;
   },
 
+  async register(payload: Record<string, unknown>): Promise<ProUser> {
+    const res = await fetch(`${API_URL}/api/auth/pro/register/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(formatApiError(data, "Inscription impossible."));
+    }
+    const data = await res.json();
+    await storage.saveTokens(data.access, data.refresh);
+    const user = normalizeUser({
+      ...(data.user as ProUser),
+      pin_set: data.pin_set ?? data.user?.pin_set,
+      pending_validation: data.pending_validation ?? data.user?.pending_validation,
+    });
+    await storage.saveUser(user);
+    return user;
+  },
+
   async me(): Promise<ProUser | null> {
     const token = await storage.getAccess();
     if (!token) return null;

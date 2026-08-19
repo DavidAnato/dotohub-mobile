@@ -58,6 +58,10 @@ export type ProUser = {
   specialite?: string;
   structures?: { id?: number; nom: string }[];
   structure_principale?: number | null;
+  type_exercice?: string | null;
+  nom_etablissement?: string | null;
+  pending_validation?: boolean;
+  compte_statut?: string;
 };
 
 /** Onglets dossier filtrés par rôle (aligné API / Dotohub web). */

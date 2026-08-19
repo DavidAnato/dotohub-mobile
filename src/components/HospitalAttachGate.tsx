@@ -6,13 +6,7 @@ import { api } from "../api";
 import { Button, Field, Header, PhoneField } from "../ui";
 import { appAlert } from "./AppDialog";
 import { useScreenInsets } from "../safeArea";
-
-const KINDS = [
-  { v: "etablissement_sante", l: "Établissement de santé" },
-  { v: "pharmacie", l: "Pharmacie" },
-  { v: "laboratoire", l: "Laboratoire" },
-  { v: "independant", l: "Indépendant" },
-];
+import { TYPE_EXERCICE } from "../constants";
 
 export function HospitalAttachGate({
   visible,
@@ -97,7 +91,7 @@ export function HospitalAttachGate({
             TYPE
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-            {KINDS.map((k) => (
+            {TYPE_EXERCICE.map((k) => (
               <Pressable
                 key={k.v}
                 onPress={() => setKind(k.v)}
