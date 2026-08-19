@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { C, darkC, accent } from "../theme";
 import { api } from "../api";
 import { AuthScreenHeader, Button, Field, PhoneField } from "../ui";
 import { appAlert } from "./AppDialog";
+import { HospitalPicker } from "./HospitalPicker";
 import { useScreenInsets } from "../safeArea";
-import { TYPE_EXERCICE } from "../constants";
+import { TYPE_EXERCICE, typeExerciceHint } from "../constants";
 
 export function HospitalAttachGate({
   visible,
@@ -18,7 +18,7 @@ export function HospitalAttachGate({
   onDone: (user: any) => void;
 }) {
   const colors = dark ? darkC : C;
-  const { scrollBottom } = useScreenInsets();
+  const { bottom } = useScreenInsets();
   const [hospitals, setHospitals] = useState<{ id: number; nom: string; commune?: string }[]>([]);
   const [kind, setKind] = useState("etablissement_sante");
   const [ville, setVille] = useState("");
@@ -29,6 +29,7 @@ export function HospitalAttachGate({
   const [lignePro, setLignePro] = useState("");
   const [pickedIds, setPickedIds] = useState<number[]>([]);
   const [principalId, setPrincipalId] = useState<number | "">("");
+  const [horsCatalogue, setHorsCatalogue] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -40,6 +41,16 @@ export function HospitalAttachGate({
   }, [visible]);
 
   const independant = kind === "independant";
+  const showNomLibre = independant || horsCatalogue || !hospitals.length;
+
+  const chooseKind = (next: string) => {
+    setKind(next);
+    if (next === "independant") {
+      setPickedIds([]);
+      setPrincipalId("");
+      setHorsCatalogue(false);
+    }
+  };
 
   const save = async () => {
     if (!independant && !pickedIds.length && !nomLibre.trim()) {
@@ -51,7 +62,7 @@ export function HospitalAttachGate({
       return;
     }
     if (!independant && pickedIds.length && !principalId) {
-      appAlert("Inscription", "Désignez l'établissement principal.");
+      appAlert("Inscription", "Désignez l'établissement principal (étoile).");
       return;
     }
     setBusy(true);
@@ -64,8 +75,8 @@ export function HospitalAttachGate({
         numero_ordre: ordre,
         email_pro: emailPro,
         ligne_pro: lignePro,
-        structure_ids: pickedIds,
-        structure_principale: principalId || null,
+        structure_ids: independant ? [] : pickedIds,
+        structure_principale: independant ? null : principalId || null,
       };
       if (nomLibre.trim()) {
         payload.etablissement_libre = { nom: nomLibre.trim(), ville, type: kind };
@@ -79,23 +90,48 @@ export function HospitalAttachGate({
     }
   };
 
+  const kindLabel = TYPE_EXERCICE.find((k) => k.v === kind)?.l || kind;
+  const principalNom = hospitals.find((h) => h.id === principalId)?.nom;
+  const pickedNoms = hospitals.filter((h) => pickedIds.includes(h.id)).map((h) => h.nom);
+  const recapLieu = independant
+    ? nomLibre.trim() || "Nom du cabinet à renseigner"
+    : pickedNoms.length
+      ? pickedNoms.length > 2
+        ? `${pickedNoms[0]} + ${pickedNoms.length - 1} autres`
+        : pickedNoms.join(", ")
+      : nomLibre.trim() || "Aucun établissement choisi";
+  const recapReady = useMemo(
+    () =>
+      independant ? Boolean(nomLibre.trim()) : Boolean(pickedIds.length || nomLibre.trim()),
+    [independant, nomLibre, pickedIds.length]
+  );
+
+  const group = {
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: dark ? colors.white : "#F7FAFB",
+  };
+
   return (
     <Modal visible={visible} animationType="fade" presentationStyle="fullScreen">
       <View style={{ flex: 1, backgroundColor: dark ? "#0A0A0A" : "#F4FBFC" }}>
         <AuthScreenHeader
           colors={colors}
           title="Votre exercice"
-          subtitle="Type, établissement et autorisations."
+          subtitle="D'abord le type, ensuite seulement les champs utiles."
         />
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: scrollBottom, gap: 4 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16, gap: 4 }}>
           <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13, marginBottom: 8 }}>
             Type d'exercice
           </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
             {TYPE_EXERCICE.map((k) => (
               <Pressable
                 key={k.v}
-                onPress={() => setKind(k.v)}
+                onPress={() => chooseKind(k.v)}
                 style={{
                   paddingHorizontal: 14,
                   paddingVertical: 10,
@@ -105,65 +141,147 @@ export function HospitalAttachGate({
                   borderColor: kind === k.v ? accent : colors.border,
                 }}
               >
-                <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13 }}>
-                  {k.l}
-                </Text>
+                <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13 }}>{k.l}</Text>
               </Pressable>
             ))}
           </View>
-          <Field label="Ville d'exercice" value={ville} onChangeText={setVille} colors={colors} placeholder="Cotonou" />
-          <Field
-            label={independant ? "Nom du cabinet / exercice" : "Nom établissement (si hors catalogue)"}
-            value={nomLibre}
-            onChangeText={setNomLibre}
-            colors={colors}
-            placeholder="Clinique, pharmacie ou cabinet"
-          />
-          <Field label="N° autorisation" value={autorisation} onChangeText={setAutorisation} colors={colors} />
-          <Field label="N° Ordre National" value={ordre} onChangeText={setOrdre} colors={colors} />
-          <Field label="Email professionnel" value={emailPro} onChangeText={setEmailPro} colors={colors} keyboardType="email-address" />
-          <PhoneField label="Ligne professionnelle +229" value={lignePro} onChangeText={setLignePro} colors={colors} />
+          <Text style={{ color: colors.muted, fontSize: 12.5, lineHeight: 18, marginBottom: 14 }}>
+            {typeExerciceHint(kind)}
+          </Text>
 
-          {!independant ? (
-            <>
-              <Text style={{ color: colors.text, fontWeight: "800", fontSize: 12, marginTop: 8 }}>
-                ÉTABLISSEMENTS DU CATALOGUE
-              </Text>
-              {hospitals.map((h) => {
-                const on = pickedIds.includes(h.id);
-                return (
-                  <Pressable
-                    key={h.id}
-                    onPress={() => {
-                      const next = on ? pickedIds.filter((x) => x !== h.id) : [...pickedIds, h.id];
-                      setPickedIds(next);
-                      if (principalId && !next.includes(Number(principalId))) {
-                        setPrincipalId(next[0] || "");
-                      } else if (!principalId && next.length === 1) {
-                        setPrincipalId(next[0]);
-                      }
-                    }}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 }}
-                  >
-                    <Ionicons name={on ? "checkbox" : "square-outline"} size={22} color={on ? C.teal : colors.muted} />
-                    <Text style={{ color: colors.text, flex: 1 }}>
-                      {h.nom}
-                      {h.commune ? ` · ${h.commune}` : ""}
+          <View style={group}>
+            <Text
+              style={{
+                color: colors.muted,
+                fontWeight: "800",
+                fontSize: 11,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                marginBottom: 12,
+              }}
+            >
+              Où j'exerce
+            </Text>
+            <Field label="Ville d'exercice" value={ville} onChangeText={setVille} colors={colors} placeholder="Cotonou" />
+            {independant ? (
+              <Field
+                label="Nom du cabinet / exercice"
+                value={nomLibre}
+                onChangeText={setNomLibre}
+                colors={colors}
+                placeholder="Cabinet Dr. Kpo"
+              />
+            ) : (
+              <>
+                <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13, marginBottom: 8 }}>
+                  Établissements du catalogue
+                </Text>
+                <HospitalPicker
+                  hospitals={hospitals}
+                  pickedIds={pickedIds}
+                  principalId={principalId}
+                  onChangePicked={setPickedIds}
+                  onChangePrincipal={setPrincipalId}
+                  colors={colors}
+                />
+                {hospitals.length ? (
+                  <Pressable onPress={() => setHorsCatalogue((v) => !v)} style={{ marginBottom: 12 }}>
+                    <Text style={{ color: accent, fontWeight: "700", fontSize: 13 }}>
+                      {horsCatalogue
+                        ? "Masquer le nom hors catalogue"
+                        : "Mon établissement n'est pas dans la liste"}
                     </Text>
-                    {on ? (
-                      <Pressable onPress={() => setPrincipalId(h.id)}>
-                        <Text style={{ color: principalId === h.id ? C.teal : colors.muted, fontSize: 11, fontWeight: "700" }}>
-                          {principalId === h.id ? "Principal" : "Principal ?"}
-                        </Text>
-                      </Pressable>
-                    ) : null}
                   </Pressable>
-                );
-              })}
-            </>
-          ) : null}
-          <Button title="Valider" loading={busy} color={dark ? accent : C.navy} onPress={() => void save()} />
+                ) : null}
+                {showNomLibre ? (
+                  <Field
+                    label="Nom hors catalogue"
+                    value={nomLibre}
+                    onChangeText={setNomLibre}
+                    colors={colors}
+                    placeholder="Clinique, pharmacie ou laboratoire"
+                  />
+                ) : null}
+              </>
+            )}
+          </View>
+
+          <View style={group}>
+            <Text
+              style={{
+                color: colors.muted,
+                fontWeight: "800",
+                fontSize: 11,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                marginBottom: 6,
+              }}
+            >
+              Identifiants professionnels
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 12.5, marginBottom: 10 }}>
+              Facultatif. Utile pour la validation admin.
+            </Text>
+            <Field label="N° autorisation" value={autorisation} onChangeText={setAutorisation} colors={colors} />
+            <Field label="N° Ordre National" value={ordre} onChangeText={setOrdre} colors={colors} />
+            <Field
+              label="Email professionnel"
+              value={emailPro}
+              onChangeText={setEmailPro}
+              colors={colors}
+              keyboardType="email-address"
+            />
+            <PhoneField label="Ligne professionnelle +229" value={lignePro} onChangeText={setLignePro} colors={colors} />
+          </View>
+
+          <View
+            style={{
+              marginBottom: 8,
+              padding: 14,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderStyle: "dashed",
+              borderColor: colors.border,
+            }}
+          >
+            <Text
+              style={{
+                color: colors.muted,
+                fontWeight: "800",
+                fontSize: 11,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                marginBottom: 10,
+              }}
+            >
+              Récapitulatif
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 13 }}>{kindLabel}</Text>
+            <Text style={{ color: colors.text, fontSize: 13, marginTop: 4 }}>
+              {ville.trim() ? `${recapLieu} · ${ville.trim()}` : recapLieu}
+            </Text>
+            {!independant && principalNom ? (
+              <Text style={{ color: colors.text, fontSize: 13, marginTop: 4 }}>Principal : {principalNom}</Text>
+            ) : null}
+            {!recapReady ? (
+              <Text style={{ color: colors.muted, fontSize: 12.5, marginTop: 8 }}>
+                Complétez le lieu d'exercice pour valider.
+              </Text>
+            ) : null}
+          </View>
         </ScrollView>
+        <View
+          style={{
+            paddingHorizontal: 16,
+            paddingTop: 10,
+            paddingBottom: Math.max(bottom, 12),
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            backgroundColor: dark ? "#0A0A0A" : "#FFFFFF",
+          }}
+        >
+          <Button title="Valider" loading={busy} color={dark ? accent : C.navy} onPress={() => void save()} />
+        </View>
       </View>
     </Modal>
   );
