@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
-import { C, darkC, accent } from "../theme";
+import { C, darkC, accent, tealInk } from "../theme";
 import { api } from "../api";
 import { AuthScreenHeader, Button, Field, PhoneField } from "../ui";
 import { appAlert } from "./AppDialog";
@@ -112,12 +112,12 @@ export function HospitalAttachGate({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: dark ? colors.white : "#F7FAFB",
+    backgroundColor: colors.white,
   };
 
   return (
     <Modal visible={visible} animationType="fade" presentationStyle="fullScreen">
-      <View style={{ flex: 1, backgroundColor: dark ? "#0A0A0A" : "#F4FBFC" }}>
+      <View style={{ flex: 1, backgroundColor: colors.white }}>
         <AuthScreenHeader
           colors={colors}
           title="Votre exercice"
@@ -136,12 +136,20 @@ export function HospitalAttachGate({
                   paddingHorizontal: 14,
                   paddingVertical: 10,
                   borderRadius: 999,
-                  backgroundColor: kind === k.v ? "rgba(43,179,188,0.12)" : "transparent",
+                  backgroundColor: kind === k.v ? accent : "transparent",
                   borderWidth: 1,
                   borderColor: kind === k.v ? accent : colors.border,
                 }}
               >
-                <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13 }}>{k.l}</Text>
+                <Text
+                  style={{
+                    color: kind === k.v ? tealInk : colors.text,
+                    fontWeight: "700",
+                    fontSize: 13,
+                  }}
+                >
+                  {k.l}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -277,7 +285,7 @@ export function HospitalAttachGate({
             paddingBottom: Math.max(bottom, 12),
             borderTopWidth: 1,
             borderTopColor: colors.border,
-            backgroundColor: dark ? "#0A0A0A" : "#FFFFFF",
+            backgroundColor: colors.white,
           }}
         >
           <Button title="Valider" loading={busy} color={dark ? accent : C.navy} onPress={() => void save()} />

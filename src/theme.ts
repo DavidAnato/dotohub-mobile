@@ -43,6 +43,8 @@ export const brandNavy = "#1E3755";
 export const brandBlue = "#2BB3BC";
 export const accent = "#2BB3BC";
 export const onBrand = "#FFFFFF";
+export const tealInk = "#073033";
+export const starOn = "#F5C518";
 
 export type ProUser = {
   id: number;

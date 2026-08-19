@@ -1,11 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { C, accent } from "../theme";
+import { starOn } from "../theme";
 
 type Hospital = { id: number; nom: string; commune?: string; department?: string };
-
-const PREVIEW = 8;
 
 function hospitalLabel(h: Hospital) {
   return h.commune ? `${h.nom} · ${h.commune}` : h.nom;
@@ -27,6 +25,7 @@ export function HospitalPicker({
   colors: { text: string; muted: string; border: string; white: string; bg?: string };
 }) {
   const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
   const query = q.trim().toLowerCase();
 
   const picked = useMemo(
@@ -41,9 +40,6 @@ export function HospitalPicker({
       return hay.includes(query);
     });
   }, [hospitals, query]);
-
-  const visible = query ? filtered : filtered.slice(0, PREVIEW);
-  const hiddenCount = query ? 0 : Math.max(0, filtered.length - visible.length);
 
   const applyNext = (next: number[]) => {
     onChangePicked(next);
@@ -77,8 +73,8 @@ export function HospitalPicker({
                   paddingRight: 6,
                   borderRadius: 999,
                   borderWidth: 1,
-                  borderColor: principal ? accent : colors.border,
-                  backgroundColor: principal ? "rgba(43,179,188,0.12)" : colors.white,
+                  borderColor: principal ? starOn : colors.border,
+                  backgroundColor: colors.white,
                 }}
               >
                 <Pressable
@@ -88,7 +84,11 @@ export function HospitalPicker({
                     principal ? `${h.nom}, établissement principal` : `Définir ${h.nom} comme principal`
                   }
                 >
-                  <Ionicons name={principal ? "star" : "star-outline"} size={16} color={principal ? C.teal : colors.muted} />
+                  <Ionicons
+                    name={principal ? "star" : "star-outline"}
+                    size={16}
+                    color={principal ? starOn : colors.muted}
+                  />
                 </Pressable>
                 <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13, maxWidth: 160 }} numberOfLines={1}>
                   {h.nom}
@@ -100,112 +100,106 @@ export function HospitalPicker({
             );
           })}
         </View>
-      ) : (
-        <Text style={{ color: colors.muted, fontSize: 12.5, marginBottom: 10 }}>
-          Aucun établissement choisi pour l'instant.
-        </Text>
-      )}
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
-          borderWidth: 1,
-          borderColor: colors.border,
-          borderRadius: 12,
-          paddingHorizontal: 12,
-          marginBottom: 10,
-          backgroundColor: colors.white,
-        }}
-      >
-        <Ionicons name="search" size={16} color={colors.muted} />
-        <TextInput
-          value={q}
-          onChangeText={setQ}
-          placeholder="Rechercher par nom ou ville"
-          placeholderTextColor={colors.muted}
-          autoCapitalize="none"
-          style={{ flex: 1, paddingVertical: 12, color: colors.text, fontSize: 15 }}
-        />
-      </View>
+      ) : null}
 
       {!hospitals.length ? (
         <Text style={{ color: colors.muted, fontSize: 12.5, marginBottom: 8 }}>
           Catalogue indisponible. Saisissez le nom ci-dessous.
         </Text>
-      ) : !visible.length ? (
-        <Text style={{ color: colors.muted, fontSize: 12.5, marginBottom: 8 }}>
-          Aucun établissement pour « {q.trim()} ».
-        </Text>
       ) : (
-        <View
-          style={{
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 12,
-            overflow: "hidden",
-            maxHeight: 280,
-          }}
-        >
-          {visible.map((h, i) => {
-            const on = pickedIds.includes(h.id);
-            const principal = principalId === h.id;
-            return (
+        <View>
+          <Pressable
+            onPress={() => setOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: open }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: open ? "#2BB3BC" : colors.border,
+              borderRadius: 12,
+              paddingHorizontal: 12,
+              paddingVertical: 12,
+              backgroundColor: colors.white,
+            }}
+          >
+            <Ionicons name="search" size={16} color={colors.muted} />
+            <Text style={{ flex: 1, color: colors.muted, fontSize: 15 }}>
+              {picked.length ? "Ajouter un établissement" : "Choisir un établissement"}
+            </Text>
+            <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={colors.muted} />
+          </Pressable>
+
+          {open ? (
+            <View
+              style={{
+                marginTop: 6,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 12,
+                overflow: "hidden",
+                backgroundColor: colors.white,
+              }}
+            >
               <View
-                key={h.id}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 8,
                   paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  backgroundColor: on ? "rgba(43,179,188,0.08)" : "transparent",
-                  borderTopWidth: i ? 1 : 0,
-                  borderTopColor: colors.border,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.border,
                 }}
               >
-                <Pressable
-                  onPress={() => toggle(h.id)}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}
-                >
-                  <Ionicons name={on ? "checkbox" : "square-outline"} size={22} color={on ? C.teal : colors.muted} />
-                  <Text style={{ color: colors.text, flex: 1 }} numberOfLines={2}>
-                    {hospitalLabel(h)}
-                  </Text>
-                </Pressable>
-                {on ? (
-                  <Pressable
-                    onPress={() => onChangePrincipal(h.id)}
-                    accessibilityLabel={principal ? "Établissement principal" : `Définir ${h.nom} comme principal`}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                      paddingHorizontal: 8,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      borderWidth: 1,
-                      borderColor: principal ? accent : colors.border,
-                      backgroundColor: principal ? "rgba(43,179,188,0.14)" : "transparent",
-                    }}
-                  >
-                    <Ionicons name={principal ? "star" : "star-outline"} size={14} color={principal ? C.teal : colors.muted} />
-                    <Text style={{ color: principal ? C.teal : colors.muted, fontSize: 11, fontWeight: "700" }}>
-                      {principal ? "Principal" : "Principal ?"}
-                    </Text>
-                  </Pressable>
-                ) : null}
+                <Ionicons name="search" size={16} color={colors.muted} />
+                <TextInput
+                  value={q}
+                  onChangeText={setQ}
+                  placeholder="Rechercher par nom ou ville"
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="none"
+                  autoFocus
+                  style={{ flex: 1, paddingVertical: 12, color: colors.text, fontSize: 15 }}
+                />
               </View>
-            );
-          })}
+              {!filtered.length ? (
+                <Text style={{ color: colors.muted, fontSize: 12.5, margin: 12 }}>
+                  Aucun établissement pour « {q.trim()} ».
+                </Text>
+              ) : (
+                <ScrollView style={{ maxHeight: 280 }} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                  {filtered.map((h, i) => {
+                    const on = pickedIds.includes(h.id);
+                    return (
+                      <Pressable
+                        key={h.id}
+                        onPress={() => toggle(h.id)}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 10,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          backgroundColor: on ? "rgba(43,179,188,0.08)" : "transparent",
+                          borderTopWidth: i ? 1 : 0,
+                          borderTopColor: colors.border,
+                        }}
+                      >
+                        <Ionicons name={on ? "checkbox" : "square-outline"} size={22} color={on ? "#2BB3BC" : colors.muted} />
+                        <Text style={{ color: colors.text, flex: 1 }} numberOfLines={2}>
+                          {hospitalLabel(h)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              )}
+            </View>
+          ) : null}
         </View>
       )}
-      {hiddenCount ? (
-        <Text style={{ color: colors.muted, fontSize: 12.5, marginTop: 8 }}>
-          {hiddenCount} autre{hiddenCount > 1 ? "s" : ""} dans le catalogue. Tapez pour affiner.
-        </Text>
-      ) : null}
+
       {picked.length ? (
         <Text style={{ color: colors.muted, fontSize: 12.5, marginTop: 8, lineHeight: 18 }}>
           L'étoile désigne le principal : lieu proposé par défaut en consultation.

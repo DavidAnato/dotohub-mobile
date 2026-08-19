@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { AuthScreenHeader, Button, Field, PhoneField } from "../ui";
-import { C, darkC, ProUser, accent } from "../theme";
+import { C, darkC, ProUser, accent, tealInk } from "../theme";
 import { api } from "../api";
 import { PRO_ROLES, TYPE_EXERCICE, typeExerciceHint } from "../constants";
 import { appAlert } from "../components/AppDialog";
@@ -145,7 +145,7 @@ export default function Register({
   );
 
   const grad = dark
-    ? ([colors.bg, "#121212", colors.white] as const)
+    ? ([colors.white, colors.white, colors.white] as const)
     : (["#F4FBFC", "#F7FAFB", "#FFFFFF"] as const);
 
   const chip = (on: boolean) => ({
@@ -157,13 +157,22 @@ export default function Register({
     borderColor: on ? accent : colors.border,
   });
 
+  const kindChip = (on: boolean) => ({
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: on ? accent : "transparent",
+    borderWidth: 1,
+    borderColor: on ? accent : colors.border,
+  });
+
   const group = {
     marginBottom: 16,
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: dark ? colors.white : "#F7FAFB",
+    backgroundColor: colors.white,
   };
 
   return (
@@ -243,8 +252,16 @@ export default function Register({
               </Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                 {TYPE_EXERCICE.map((k) => (
-                  <Pressable key={k.v} onPress={() => chooseKind(k.v)} style={chip(kind === k.v)}>
-                    <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13 }}>{k.l}</Text>
+                  <Pressable key={k.v} onPress={() => chooseKind(k.v)} style={kindChip(kind === k.v)}>
+                    <Text
+                      style={{
+                        color: kind === k.v ? tealInk : colors.text,
+                        fontWeight: "700",
+                        fontSize: 13,
+                      }}
+                    >
+                      {k.l}
+                    </Text>
                   </Pressable>
                 ))}
               </View>
@@ -400,7 +417,7 @@ export default function Register({
               paddingBottom: Math.max(bottom, 12),
               borderTopWidth: 1,
               borderTopColor: colors.border,
-              backgroundColor: dark ? colors.bg : "#FFFFFF",
+              backgroundColor: colors.white,
             }}
           >
             <Button title="Retour" outline color={colors.navy} onPress={() => setStep(1)} compact style={{ minWidth: 96 }} />
