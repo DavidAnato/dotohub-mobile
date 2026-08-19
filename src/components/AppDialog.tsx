@@ -33,7 +33,7 @@ function flush() {
   showImpl(queue.shift()!);
 }
 
-/** Remplace Alert.alert — API compatible. */
+/** Remplace Alert.alert - API compatible. */
 export function appAlert(
   title: string,
   message?: string,
@@ -65,7 +65,7 @@ export function appConfirm(
   });
 }
 
-/** Host global — monter une fois dans App. */
+/** Host global - monter une fois dans App. */
 export function AppDialogHost({ dark = false }: { dark?: boolean }) {
   const [current, setCurrent] = useState<DialogState | null>(null);
   const colors = dark ? darkC : C;
@@ -163,7 +163,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: "rgba(15, 23, 42, 0.55)",
   },
   card: {

@@ -219,7 +219,7 @@ export default function Scan({
                   Mode urgence
                 </Text>
                 <Text style={{ color: colors.muted, fontSize: 11, marginTop: 2, lineHeight: 15 }}>
-                  Bypass consentement — accès limité journalisé
+                  Bypass consentement - accès limité journalisé
                 </Text>
               </View>
               <Switch
@@ -231,7 +231,7 @@ export default function Scan({
                   }
                   appAlert(
                     "Mode urgence",
-                    "Bypass consentement — accès limité et journalisé. Continuer ?",
+                    "Bypass consentement - accès limité et journalisé. Continuer ?",
                     [
                       { text: "Annuler", style: "cancel" },
                       {

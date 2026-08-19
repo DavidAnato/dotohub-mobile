@@ -79,7 +79,7 @@ export function ScreenEnter({
   );
 }
 
-/** Item de liste — stagger opacity uniquement (cap 5 items). */
+/** Item de liste - stagger opacity uniquement (cap 5 items). */
 export function StaggerItem({
   index,
   children,

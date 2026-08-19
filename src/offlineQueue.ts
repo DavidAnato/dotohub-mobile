@@ -1,6 +1,6 @@
 /**
  * File d'actions hors-ligne (FIFO) + replay à la reconnexion.
- * Conflit : last-write / timestamp — HTTP 409 écarte l'action locale.
+ * Conflit : last-write / timestamp - HTTP 409 écarte l'action locale.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 

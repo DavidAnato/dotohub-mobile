@@ -36,6 +36,7 @@ import { BrandBackground } from "../motion";
 import { Header } from "../ui";
 import type { MainTabParamList, RootStackParamList } from "./types";
 import { notificationTarget, subscribePushNavigation, takePendingPush } from "../notifRoutes";
+import { useScreenInsets } from "../safeArea";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -110,7 +111,7 @@ function OfflineBanner() {
     >
       <Ionicons name="cloud-offline-outline" size={16} color={colors.amber} />
       <Text style={{ color: colors.amber, fontWeight: "700", fontSize: 12, flex: 1 }}>
-        Hors ligne — cache local, file d'actions rejouée à la reconnexion
+        Hors ligne - cache local, file d'actions rejouée à la reconnexion
       </Text>
     </View>
   );
@@ -247,6 +248,7 @@ function MainTabs() {
   const toggleDark = useAppStore((s) => s.toggleDark);
   const colors = dark ? darkC : C;
   const showAgendaTab = roleHasAgendaTab(user?.role);
+  const { tabBarPad } = useScreenInsets();
 
   if (!user) {
     return (
@@ -269,9 +271,9 @@ function MainTabs() {
           backgroundColor: colors.white,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          paddingBottom: 6,
+          paddingBottom: tabBarPad,
           paddingTop: 6,
-          height: 58,
+          height: 52 + tabBarPad,
           elevation: 8,
           shadowColor: brandNavy,
           shadowOpacity: 0.06,
@@ -466,7 +468,7 @@ export function RootNavigator() {
       if (!data || !navRef.current) return;
       const t = notificationTarget({ ...data, payload: data });
       try {
-        navRef.current.navigate(t.screen, t.params);
+        navRef.current.navigate(t.screen, "params" in t ? t.params : undefined);
       } catch {
         /* nav not ready */
       }

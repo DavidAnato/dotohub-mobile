@@ -382,7 +382,7 @@ export default function Agenda({
                             hour: "2-digit",
                             minute: "2-digit",
                           })
-                        : "—"}
+                        : "-"}
                     </Text>
                     <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
                       {a.motif || "Sans motif"}

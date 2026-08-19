@@ -1,4 +1,4 @@
-# DotoHub Mobile — application professionnelle (séparée de Doto+ patient)
+# DotoHub Mobile - application professionnelle (séparée de Doto+ patient)
 
 App Expo / React Native pour les professionnels de santé.
 Se connecte à la même API Django (`doto-backend`) et au même JWT

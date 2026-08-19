@@ -23,7 +23,7 @@ export function Avatar({
   name?: string;
   size?: number;
   style?: ViewStyle;
-  /** Conservé pour compat — le fallback utilise le dégradé marque. */
+  /** Conservé pour compat - le fallback utilise le dégradé marque. */
   bg?: string;
   textColor?: string;
   ring?: boolean;

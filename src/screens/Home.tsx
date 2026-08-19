@@ -98,7 +98,7 @@ export default function Home({
   const showSkeleton = isLoading && !dash;
   const showAgenda = roleHasAgendaTab(user.role);
   const roleCtas = roleHomeCtas(user.role);
-  /** Réception : RDV est déjà dans les CTAs rôle — éviter le doublon Agenda. */
+  /** Réception : RDV est déjà dans les CTAs rôle - éviter le doublon Agenda. */
   const showGenericAgenda =
     showAgenda && !roleCtas.some((c) => c.target === "agenda");
   const { refreshControl } = usePullRefresh({
@@ -149,7 +149,7 @@ export default function Home({
                     STRUCTURE
                   </Text>
                   <Text style={{ color: colors.text, fontWeight: "800", fontSize: 17, marginTop: 4 }}>
-                    {dash?.structure_principale?.nom || "—"}
+                    {dash?.structure_principale?.nom || "-"}
                   </Text>
                 </Card>
               </StaggerItem>

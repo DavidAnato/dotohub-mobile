@@ -1,4 +1,4 @@
-/** Bannière / écran attente consentement — DotoHub Mobile. */
+/** Bannière / écran attente consentement - DotoHub Mobile. */
 import React from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,7 +35,7 @@ export function ConsentWaitingView({
 }: {
   patientName?: string;
   emergency?: boolean;
-  /** Rôle du pro demandeur — adapte le message d'attente. */
+  /** Rôle du pro demandeur - adapte le message d'attente. */
   role?: string;
   dark?: boolean;
   onCancel?: () => void;
@@ -57,7 +57,7 @@ export function ConsentWaitingView({
         }}
       >
         <Text style={{ color: C.emergency, fontWeight: "800", fontSize: 13 }}>
-          Accès urgence sans consentement — journalisé
+          Accès urgence sans consentement - journalisé
         </Text>
         <Text style={{ color: colors.muted, fontSize: 12, marginTop: 6, lineHeight: 17 }}>
           Ouverture limitée (groupe sanguin, allergies, chroniques, contacts). Toute action

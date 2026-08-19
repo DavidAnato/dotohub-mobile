@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { C, brandNavy, onBrand } from "./theme";
 import { PressScale, IconBadge, CardDecor } from "./motion";
 import { BJ_DIAL, formatNational, nationalDigits, toE164Bj } from "./phone";
+import { useScreenInsets } from "./safeArea";
 
 export type ThemeColors = typeof C;
 
@@ -43,7 +44,7 @@ export function Card({
     },
     style,
   ];
-  // CardDecor is absolute + pointerEvents none — keep children as direct layout children
+  // CardDecor is absolute + pointerEvents none - keep children as direct layout children
   // so flexDirection / gap / alignItems on `style` apply correctly.
   const inner = (
     <>
@@ -80,6 +81,7 @@ export function Button({
   loading = false,
   icon,
   compact = false,
+  style,
 }: {
   title: string;
   onPress: () => void;
@@ -90,6 +92,7 @@ export function Button({
   icon?: keyof typeof Ionicons.glyphMap;
   /** Bouton plus étroit (chips / actions secondaires en ligne) */
   compact?: boolean;
+  style?: StyleProp<ViewStyle>;
 }) {
   const fg = outline ? color : onBrand;
   return (
@@ -110,6 +113,7 @@ export function Button({
               elevation: 2,
             },
         (disabled || loading) && { opacity: 0.5 },
+        style,
       ]}
     >
       {loading ? (
@@ -279,7 +283,7 @@ export function PhoneField({
         />
       </View>
       <Text style={{ color: colors.muted, fontSize: 11, marginTop: 6 }}>
-        Indicatif Bénin prérempli — saisissez uniquement le numéro local.
+        Indicatif Bénin prérempli - saisissez uniquement le numéro local.
       </Text>
     </View>
   );
@@ -297,12 +301,13 @@ export function Header({
   onBack?: () => void;
   right?: React.ReactNode;
 }) {
+  const { headerPad } = useScreenInsets();
   return (
     <View
       style={{
         backgroundColor: brandNavy,
         paddingHorizontal: space.md,
-        paddingTop: space.sm,
+        paddingTop: headerPad,
         paddingBottom: space.md,
       }}
     >
@@ -425,7 +430,7 @@ export function UrgenceBanner({
     u.tel_urgence || null,
   ]
     .filter(Boolean)
-    .join(" · ") || "—";
+    .join(" · ") || "-";
 
   return (
     <View
@@ -479,7 +484,7 @@ export function UrgenceBanner({
           <UrgenceSnapRow
             icon="shield-checkmark-outline"
             label="Assurance"
-            value={`${u.assureur || "—"} · ${u.num_police || "—"}`}
+            value={`${u.assureur || "-"} · ${u.num_police || "-"}`}
             colors={colors}
             last
           />

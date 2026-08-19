@@ -62,7 +62,7 @@ export default function Recherche({
       const cache = await storage.getCachedPatients();
       setResults(cache);
       setOfflineHint(true);
-      setError(e.message || "Recherche hors ligne — cache local.");
+      setError(e.message || "Recherche hors ligne - cache local.");
     }
   };
 

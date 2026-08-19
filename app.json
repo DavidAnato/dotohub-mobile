@@ -23,6 +23,8 @@
     "android": {
       "package": "bj.dotoplus.hub",
       "versionCode": 2,
+      "softwareKeyboardLayoutMode": "resize",
+      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "backgroundColor": "#1E3755",
         "foregroundImage": "./assets/android-icon-foreground.png",

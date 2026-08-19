@@ -421,9 +421,9 @@ export default function LaboFile({
                       {x.patient_npi ? ` · NPI ${x.patient_npi}` : ""}
                     </Text>
                     <Text style={{ color: colors.muted, fontSize: 12 }}>
-                      {x.categorie_label || x.categorie || "—"}
+                      {x.categorie_label || x.categorie || "-"}
                       {" · "}
-                      {x.date ? new Date(x.date).toLocaleDateString("fr-FR") : "—"}
+                      {x.date ? new Date(x.date).toLocaleDateString("fr-FR") : "-"}
                     </Text>
                     {x.resultat_texte ? (
                       <Text style={{ color: colors.text, marginTop: 4 }} numberOfLines={3}>
@@ -551,7 +551,7 @@ export default function LaboFile({
                   Patient
                 </Text>
                 <Text style={{ color: colors.muted, fontSize: 11, marginTop: -6 }}>
-                  Recherche par nom ou NPI — pas d'identifiant technique
+                  Recherche par nom ou NPI - pas d'identifiant technique
                 </Text>
                 <PatientSelectSearch
                   value={form.patient}

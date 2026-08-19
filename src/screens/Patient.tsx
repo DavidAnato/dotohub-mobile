@@ -168,7 +168,7 @@ export default function PatientDossier({
       appAlert(
         "RDV créé",
         isReception && rdvMode === "medecin"
-          ? "Le médecin a été notifié — en attente de confirmation."
+          ? "Le médecin a été notifié - en attente de confirmation."
           : "Le rendez-vous a été enregistré."
       );
     } catch (e: any) {
@@ -703,7 +703,7 @@ export default function PatientDossier({
                         {item.titre ||
                           [item.specialite || "Consultation", item.medecin_nom, item.structure_nom]
                             .filter(Boolean)
-                            .join(" — ") ||
+                            .join(" - ") ||
                           "Consultation"}
                       </Text>
                       <Text style={{ color: colors.muted, fontSize: 12, marginTop: 4 }}>
@@ -823,13 +823,13 @@ export default function PatientDossier({
                       ) : null}
                       {item.statut === "active" && user.role === "pharmacien" ? (
                         <Button
-                          title="Marquer dispensée"
+                          title="Marquer payée"
                           icon="checkmark-circle-outline"
                           color={C.emerald}
                           compact
                           style={{ marginTop: 10 }}
                           onPress={() => {
-                            appAlert("Dispenser", "Marquer cette ordonnance comme dispensée ?", [
+                            appAlert("Paiement", "Marquer cette ordonnance comme payée ?", [
                               { text: "Annuler", style: "cancel" },
                               {
                                 text: "Oui",
@@ -846,16 +846,16 @@ export default function PatientDossier({
                           }}
                         />
                       ) : null}
-                      {item.statut === "dispensee" && user.role === "pharmacien" ? (
+                      {(item.statut === "dispensee" || item.statut === "payee") && user.role === "pharmacien" ? (
                         <Button
-                          title="Annuler la dispense"
+                          title="Annuler le paiement"
                           icon="arrow-undo-outline"
                           color={colors.muted}
                           compact
                           style={{ marginTop: 10 }}
                           onPress={() => {
                             appAlert(
-                              "Annuler la dispense",
+                              "Annuler le paiement",
                               "L'ordonnance redeviendra active. Continuer ?",
                               [
                                 { text: "Annuler", style: "cancel" },
@@ -924,14 +924,14 @@ export default function PatientDossier({
                       </Text>
                       <Text style={{ color: colors.muted, fontSize: 12 }}>
                         TA {item.tension_systolique}/{item.tension_diastolique} · T°{" "}
-                        {item.temperature || "—"}
+                        {item.temperature || "-"}
                       </Text>
                     </>
                   )}
                   {tab === "assurance" && (
                     <>
                       <Text style={{ fontWeight: "800", color: colors.text }}>
-                        {item.assureur || "—"}
+                        {item.assureur || "-"}
                       </Text>
                       <Text style={{ color: colors.muted, fontSize: 12 }}>
                         Police {item.num_police}
@@ -1123,7 +1123,7 @@ function WriteAssurance({
 }) {
   const [assureur, setAssureur] = useState(initial?.assureur || "");
   const [numPolice, setNumPolice] = useState(initial?.num_police || "");
-  const [droits, setDroits] = useState(initial?.droits_valides ?? true);
+  const [droits, setDroits] = useState<boolean>(Boolean(initial?.droits_valides ?? true));
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {

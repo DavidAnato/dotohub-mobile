@@ -1,4 +1,4 @@
-/** Attente consentement patient — SSE (si dispo) + poll access-request. */
+/** Attente consentement patient - SSE (si dispo) + poll access-request. */
 import { useEffect, useRef } from "react";
 import { api } from "../api";
 import { storage } from "../storage";

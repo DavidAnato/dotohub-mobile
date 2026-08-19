@@ -36,7 +36,7 @@ type SessionExpiredHandler = (message: string) => void;
 let sessionExpiredHandler: SessionExpiredHandler | null = null;
 let sessionExpiredLock = false;
 
-/** Enregistré depuis App — clear session + retour Login. */
+/** Enregistré depuis App - clear session + retour Login. */
 export function setSessionExpiredHandler(handler: SessionExpiredHandler | null) {
   sessionExpiredHandler = handler;
 }
@@ -218,6 +218,14 @@ export const api = {
     specialite?: string;
     structure_principale?: number | null;
     structure_ids?: number[];
+    type_exercice?: string;
+    ville_exercice?: string;
+    nom_etablissement?: string;
+    numero_autorisation?: string;
+    numero_ordre?: string;
+    email_pro?: string;
+    ligne_pro?: string;
+    etablissement_libre?: { nom: string; ville?: string; type?: string };
   }): Promise<ProUser> {
     const user = normalizeUser(
       await requestJson<ProUser>("/api/auth/me/", {
@@ -603,7 +611,7 @@ export const api = {
     }
   },
 
-  /** RDV du jour (filtre client) — exclut les annulés. */
+  /** RDV du jour (filtre client) - exclut les annulés. */
   async appointmentsToday() {
     const list = await this.appointments();
     const items = Array.isArray(list) ? list : [];

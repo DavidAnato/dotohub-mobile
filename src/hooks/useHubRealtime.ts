@@ -1,4 +1,4 @@
-/** SSE hub mobile — invalidation React Query + kick dossier si accès révoqué. */
+/** SSE hub mobile - invalidation React Query + kick dossier si accès révoqué. */
 import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
@@ -40,11 +40,13 @@ const SSE_RETRY_MS = 5_000;
 function invalidatePatientMedical(qc: QueryClient, patientId: number | string | undefined | null) {
   if (patientId == null || patientId === "") return;
   const id = String(patientId);
+  const nid = Number(patientId);
+  if (!Number.isFinite(nid) || nid <= 0) return;
   void qc.invalidateQueries({ queryKey: qk.patient(id) });
-  void qc.invalidateQueries({ queryKey: qk.consultations(Number(id) || id) });
-  void qc.invalidateQueries({ queryKey: qk.ordonnances(Number(id) || id) });
-  void qc.invalidateQueries({ queryKey: qk.examens(Number(id) || id) });
-  void qc.invalidateQueries({ queryKey: qk.constantes(Number(id) || id) });
+  void qc.invalidateQueries({ queryKey: qk.consultations(nid) });
+  void qc.invalidateQueries({ queryKey: qk.ordonnances(nid) });
+  void qc.invalidateQueries({ queryKey: qk.examens(nid) });
+  void qc.invalidateQueries({ queryKey: qk.constantes(nid) });
   void qc.invalidateQueries({ queryKey: ["ordonnances"] });
   void qc.invalidateQueries({ queryKey: ["labo-examens"] });
   void qc.invalidateQueries({ queryKey: ["appointments"] });

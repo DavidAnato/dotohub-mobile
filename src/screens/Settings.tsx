@@ -331,7 +331,7 @@ export default function Settings({
                     }}
                   >
                     <Text style={{ color: C.teal, fontSize: 11, fontWeight: "700" }}>
-                      Photo à ajouter — toucher pour gérer
+                      Photo à ajouter - toucher pour gérer
                     </Text>
                   </View>
                 ) : (
@@ -539,7 +539,7 @@ export default function Settings({
                 paddingHorizontal: 8,
               }}
             >
-              Cadrez votre visage au centre. JPEG, PNG ou WebP — type photo d&apos;identité.
+              Cadrez votre visage au centre. JPEG, PNG ou WebP - type photo d&apos;identité.
             </Text>
             <Button
               title={shownPhoto ? "Changer la photo" : "Ajouter une photo"}
@@ -572,7 +572,7 @@ export default function Settings({
                 {user.role_label}
               </Text>
               <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
-                Attribué par l&apos;administration — non modifiable
+                Attribué par l&apos;administration - non modifiable
               </Text>
             </View>
             <View
@@ -606,7 +606,7 @@ export default function Settings({
                     ))}
                   </ScrollView>
                   <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 6 }}>
-                    Hôpitaux rattachés — cochez puis désignez le principal
+                    Hôpitaux rattachés - cochez puis désignez le principal
                   </Text>
                   <View style={{ maxHeight: 220 }}>
                     {hospitals.map((h) => {
@@ -750,7 +750,7 @@ export default function Settings({
               </Text>
               <Text style={{ color: colors.muted, lineHeight: 20, marginTop: 6 }}>
                 La gestion des cartes QR (émission, révocation, réémission) se fait sur le hub
-                web DotoHub — menu DotoCards. Cette app mobile n&apos;inclut pas d&apos;écran
+                web DotoHub - menu DotoCards. Cette app mobile n&apos;inclut pas d&apos;écran
                 admin dédié pour l&apos;instant.
               </Text>
             </View>

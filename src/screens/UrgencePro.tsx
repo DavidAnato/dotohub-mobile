@@ -185,7 +185,7 @@ export default function UrgencePro({
     ? `${urgence.contact_urgence_nom}${
         urgence.contact_urgence_lien ? ` (${urgence.contact_urgence_lien})` : ""
       }`
-    : "—";
+    : "-";
   const tel = (urgence?.tel_urgence || "").trim();
 
   return (
@@ -334,7 +334,7 @@ export default function UrgencePro({
           )}
 
           <Text style={[s.footerNote, { color: colors.muted }]}>
-            Écran dédié ambulancier — pas de dossier complet
+            Écran dédié ambulancier - pas de dossier complet
           </Text>
         </ScrollView>
       </ScreenEnter>

@@ -51,7 +51,7 @@ export default function PharmaFile({
       try {
         const list = await api.ordonnances(Number(patientId));
         const arr = Array.isArray(list) ? list : [];
-        setItems(arr.filter((o: any) => o.statut === "active" || o.statut === "dispensee"));
+        setItems(arr.filter((o: any) => o.statut === "active" || o.statut === "dispensee" || o.statut === "payee"));
       } catch (e: any) {
         appAlert("Erreur", e.message || "Ordonnances indisponibles");
       } finally {
@@ -84,7 +84,7 @@ export default function PharmaFile({
   };
 
   const dispense = (id: number) => {
-    appAlert("Dispenser", "Marquer cette ordonnance comme dispensée ?", [
+    appAlert("Paiement", "Marquer cette ordonnance comme payée ?", [
       { text: "Annuler", style: "cancel" },
       {
         text: "Oui",
@@ -105,7 +105,7 @@ export default function PharmaFile({
   };
 
   const undoDispense = (id: number) => {
-    appAlert("Annuler la dispense", "L'ordonnance redeviendra active. Continuer ?", [
+    appAlert("Annuler le paiement", "L'ordonnance redeviendra active. Continuer ?", [
       { text: "Annuler", style: "cancel" },
       {
         text: "Oui",
@@ -129,7 +129,7 @@ export default function PharmaFile({
     <BrandBackground dark={!!dark}>
       <ScreenEnter>
         <Header
-          title="Dispenser"
+          title="File pharmacie"
           subtitle="Ordonnance valable dans toute pharmacie"
           onBack={onBack}
         />
@@ -150,7 +150,7 @@ export default function PharmaFile({
             <EmptyState
               icon="medkit-outline"
               title="Identifier le patient"
-              subtitle="L’ordonnance est prescrite par le médecin — le patient peut l’acheter dans n’importe quelle pharmacie. Recherchez-le pour voir ses ordonnances actives."
+              subtitle="L’ordonnance est prescrite par le médecin - le patient peut l’acheter dans n’importe quelle pharmacie. Recherchez-le pour voir ses ordonnances actives."
               dark={!!dark}
             />
           </View>
@@ -199,7 +199,7 @@ export default function PharmaFile({
                     </View>
                     <Text
                       style={{
-                        color: item.statut === "dispensee" ? C.emerald : C.teal,
+                        color: item.statut === "dispensee" || item.statut === "payee" ? C.emerald : C.teal,
                         fontSize: 11,
                         fontWeight: "700",
                         textTransform: "uppercase",
@@ -209,7 +209,7 @@ export default function PharmaFile({
                     </Text>
                   </View>
                   <Text style={{ color: colors.muted, fontSize: 12 }}>
-                    {item.date ? new Date(item.date).toLocaleDateString("fr-FR") : "—"}
+                    {item.date ? new Date(item.date).toLocaleDateString("fr-FR") : "-"}
                     {item.medecin_nom ? ` · Dr ${item.medecin_nom}` : ""}
                     {item.structure_nom ? ` · prescrit à ${item.structure_nom}` : ""}
                   </Text>
@@ -223,7 +223,7 @@ export default function PharmaFile({
                   ) : null}
                   {item.statut === "active" ? (
                     <Button
-                      title="Marquer dispensée"
+                      title="Marquer payée"
                       icon="checkmark-circle-outline"
                       color={C.emerald}
                       compact
@@ -232,9 +232,9 @@ export default function PharmaFile({
                       onPress={() => dispense(item.id)}
                     />
                   ) : null}
-                  {item.statut === "dispensee" ? (
+                  {item.statut === "dispensee" || item.statut === "payee" ? (
                     <Button
-                      title="Annuler la dispense"
+                      title="Annuler le paiement"
                       icon="arrow-undo-outline"
                       color={colors.muted}
                       compact

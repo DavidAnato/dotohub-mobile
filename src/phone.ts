@@ -1,4 +1,4 @@
-/** Indicatif Bénin — préfixe verrouillé côté UI. */
+/** Indicatif Bénin - préfixe verrouillé côté UI. */
 export const BJ_DIAL = "+229";
 export const BJ_CC_DIGITS = "229";
 
@@ -31,7 +31,7 @@ export function toE164Bj(raw: string): string {
   return `${BJ_DIAL} ${formatNational(nat)}`.trim();
 }
 
-export function displayPhoneBj(raw: string, fallback = "—"): string {
+export function displayPhoneBj(raw: string, fallback = "-"): string {
   const nat = nationalDigits(raw);
   if (!nat) return fallback;
   return `${BJ_DIAL} ${formatNational(nat)}`;

@@ -1,4 +1,4 @@
-/** Constantes partagées DotoHub mobile — alignées sur `core/contracts.py`. */
+/** Constantes partagées DotoHub mobile - alignées sur `core/contracts.py`. */
 
 export const HOSPITAL_REQUIRED_ROLES = [
   "medecin",
@@ -13,10 +13,13 @@ export function needsHospitalAttach(user?: {
   role?: string;
   structures?: { id?: number }[] | null;
   structure_principale?: number | null;
+  type_exercice?: string | null;
+  nom_etablissement?: string | null;
 } | null): boolean {
   if (!user || !(HOSPITAL_REQUIRED_ROLES as readonly string[]).includes(user.role || "")) {
     return false;
   }
+  if (user.type_exercice === "independant" && (user.nom_etablissement || "").trim()) return false;
   const ids = user.structures || [];
   return !ids.length || !user.structure_principale;
 }
@@ -80,7 +83,7 @@ export const MEDICAMENT_FORMES = [
 ];
 
 export const MEDICAMENT_MOMENTS = [
-  { value: "", label: "—" },
+  { value: "", label: "-" },
   { value: "a_jeun", label: "À jeun" },
   { value: "avant_repas", label: "Avant les repas" },
   { value: "pendant_repas", label: "Pendant les repas" },
@@ -158,9 +161,9 @@ export function summarizeMed(m: {
     m.quantite,
     poso,
     duree,
-    moment && moment !== "—" ? moment : "",
+    moment && moment !== "-" ? moment : "",
     m.instructions,
   ]
     .filter(Boolean)
-    .join(" — ");
+    .join(" - ");
 }

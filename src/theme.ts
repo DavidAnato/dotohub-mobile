@@ -1,4 +1,4 @@
-/** DotoHub Mobile — thème pro (bleu nuit / bleu clair). */
+/** DotoHub Mobile - thème pro (bleu nuit / bleu clair). */
 export const C = {
   navy: "#1E3755",
   blue: "#3E8295",
@@ -18,7 +18,7 @@ export const C = {
   grey: "#94A3B8",
 };
 
-/** Variante sombre — fond noir mat, surfaces élevées, teal en accent uniquement */
+/** Variante sombre - fond noir mat, surfaces élevées, teal en accent uniquement */
 export const darkC = {
   ...C,
   bg: "#0A0A0A",
@@ -37,7 +37,7 @@ export const darkC = {
   navy: "#F5F5F5",
 };
 
-/** Navy marque (headers / boutons) — ne change jamais en dark mode */
+/** Navy marque (headers / boutons) - ne change jamais en dark mode */
 export const brandNavy = "#1E3755";
 export const brandBlue = "#3E8295";
 export const onBrand = "#FFFFFF";
@@ -79,7 +79,7 @@ export const TAB_LABELS: Record<string, string> = {
   assurance: "Assurance",
 };
 
-/** Onglet Agenda (bottom tabs) — masqué pour pharma / labo / ambulancier. */
+/** Onglet Agenda (bottom tabs) - masqué pour pharma / labo / ambulancier. */
 export const AGENDA_TAB_ROLES = new Set([
   "medecin",
   "admin",
@@ -135,7 +135,7 @@ export function roleHomeCtas(role: string): RoleNavCta[] {
       return [
         {
           id: "dispenser",
-          title: "À dispenser",
+          title: "À encaisser",
           subtitle: "Ordonnances en file",
           icon: "medkit-outline",
           target: "PharmaFile",

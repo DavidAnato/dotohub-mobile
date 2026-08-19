@@ -15,7 +15,7 @@ import { Button, Card, Header } from "../ui";
 import { C, darkC } from "../theme";
 
 function formatHeure(debut?: string) {
-  if (!debut) return "—";
+  if (!debut) return "-";
   return new Date(debut).toLocaleTimeString("fr-FR", {
     hour: "2-digit",
     minute: "2-digit",
@@ -86,7 +86,7 @@ export default function Tournee({
       <ScreenEnter>
         <Header
           title="Tournée du jour"
-          subtitle={`${todayLabel} — constantes sur le dossier`}
+          subtitle={`${todayLabel} - constantes sur le dossier`}
           onBack={onBack}
         />
         <ScrollView

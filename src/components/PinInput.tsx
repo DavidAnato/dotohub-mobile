@@ -32,7 +32,7 @@ type Props = {
 };
 
 /**
- * Saisie chiffres premium — cases, autofocus, shake sur erreur.
+ * Saisie chiffres premium - cases, autofocus, shake sur erreur.
  */
 export function PinInput({
   value,
@@ -200,7 +200,7 @@ export function PinInput({
           />
         ) : null}
         {locked ? (
-          <Pressable style={StyleSheet.absoluteFillObject} disabled />
+          <Pressable style={StyleSheet.absoluteFill} disabled />
         ) : null}
         {loading ? (
           <View style={styles.loaderOverlay} pointerEvents="none">
@@ -413,7 +413,7 @@ export function PinLockScreen({
             paddingVertical: 12,
             paddingHorizontal: 16,
             borderRadius: 14,
-            backgroundColor: dark ? "#2A1212" : C.redSoft,
+            backgroundColor: dark ? "#2A1212" : C.emergencySoft,
           }}
         >
           <Ionicons name="medkit-outline" size={18} color={C.emergency} />
@@ -449,9 +449,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  /** Couvre les cases — opacity > 0 obligatoire pour le clavier Android */
+  /** Couvre les cases - opacity > 0 obligatoire pour le clavier Android */
   inputOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     zIndex: 2,
     opacity: 0.02,
     color: "transparent",
@@ -462,7 +466,11 @@ const styles = StyleSheet.create({
     margin: 0,
   },
   loaderOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 3,

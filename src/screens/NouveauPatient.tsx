@@ -49,7 +49,7 @@ export default function NouveauPatient({
 }: {
   dark?: boolean;
   onBack: () => void;
-  /** Après create/update — typiquement navigate vers Patient. */
+  /** Après create/update - typiquement navigate vers Patient. */
   onSaved?: (id: number) => void;
   /** Si fourni : mode édition (PATCH). */
   patientId?: number;
@@ -215,7 +215,7 @@ export default function NouveauPatient({
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
               {(
                 [
-                  { v: "", label: "—" },
+                  { v: "", label: "-" },
                   { v: "M", label: "Masculin" },
                   { v: "F", label: "Féminin" },
                 ] as const

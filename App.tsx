@@ -251,11 +251,7 @@ function AppInner() {
   };
 
   if (phase === "boot") {
-    return (
-      <SafeAreaProvider>
-        <BootView />
-      </SafeAreaProvider>
-    );
+    return <BootView />;
   }
 
   const showGate = phase === "main" && (needsPinSetup || locked);
@@ -263,58 +259,58 @@ function AppInner() {
     phase === "main" && !showGate && needsHospitalAttach(user || undefined);
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: brandNavy }} edges={["top"]}>
-        <StatusBar barStyle="light-content" backgroundColor={brandNavy} />
-        <View style={{ flex: 1, backgroundColor: dark ? "#0A0A0A" : C.bg }}>
-          <RootNavigator />
-          <AppDialogHost dark={dark} />
-          <Modal visible={showGate} animationType="fade" presentationStyle="fullScreen">
-            <SafeAreaView style={{ flex: 1, backgroundColor: dark ? "#0A0A0A" : "#F0F4F7" }}>
-              <PinLockScreen
-                mode={needsPinSetup ? "setup" : "unlock"}
-                title={needsPinSetup ? "Configurer le PIN" : "DotoHub verrouillé"}
-                subtitle={
-                  needsPinSetup
-                    ? "Code obligatoire pour sécuriser votre session professionnelle"
-                    : "Entrez votre code PIN pour continuer"
-                }
-                dark={dark}
-                error={pinError}
-                loading={pinBusy}
-                bioAvailable={!needsPinSetup && bioAvailable}
-                onBio={
-                  needsPinSetup
-                    ? undefined
-                    : async () => {
-                        if (pinBusyRef.current) return;
-                        const ok = await promptBiometric();
-                        if (ok) {
-                          await storage.setBioEnabled(true);
-                          setLocked(false);
-                          setPinError("");
-                        }
+    <View style={{ flex: 1, backgroundColor: brandNavy }}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <View style={{ flex: 1, backgroundColor: dark ? "#0A0A0A" : C.bg }}>
+        <RootNavigator />
+        <AppDialogHost dark={dark} />
+        <Modal visible={showGate} animationType="fade" presentationStyle="fullScreen">
+          <SafeAreaView style={{ flex: 1, backgroundColor: dark ? "#0A0A0A" : "#F0F4F7" }} edges={["top", "bottom"]}>
+            <PinLockScreen
+              mode={needsPinSetup ? "setup" : "unlock"}
+              title={needsPinSetup ? "Configurer le PIN" : "DotoHub verrouillé"}
+              subtitle={
+                needsPinSetup
+                  ? "Code obligatoire pour sécuriser votre session professionnelle"
+                  : "Entrez votre code PIN pour continuer"
+              }
+              dark={dark}
+              error={pinError}
+              loading={pinBusy}
+              bioAvailable={!needsPinSetup && bioAvailable}
+              onBio={
+                needsPinSetup
+                  ? undefined
+                  : async () => {
+                      if (pinBusyRef.current) return;
+                      const ok = await promptBiometric();
+                      if (ok) {
+                        await storage.setBioEnabled(true);
+                        setLocked(false);
+                        setPinError("");
                       }
-                }
-                onSubmit={needsPinSetup ? setupPin : unlockWithPin}
-              />
-            </SafeAreaView>
-          </Modal>
-          <HospitalAttachGate
-            visible={showHospitalGate}
-            dark={dark}
-            onDone={(u) => setUser(u)}
-          />
-        </View>
-      </SafeAreaView>
-    </SafeAreaProvider>
+                    }
+              }
+              onSubmit={needsPinSetup ? setupPin : unlockWithPin}
+            />
+          </SafeAreaView>
+        </Modal>
+        <HospitalAttachGate
+          visible={showHospitalGate}
+          dark={dark}
+          onDone={(u) => setUser(u)}
+        />
+      </View>
+    </View>
   );
 }
 
 export default function App() {
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
-      <AppInner />
-    </PersistQueryClientProvider>
+    <SafeAreaProvider>
+      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+        <AppInner />
+      </PersistQueryClientProvider>
+    </SafeAreaProvider>
   );
 }
