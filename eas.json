@@ -18,7 +18,7 @@
         "autoIncrement": true
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://doto-backend-71tk.onrender.com",
+        "EXPO_PUBLIC_API_URL": "https://doto-anato.loca.lt",
         "EAS_BUILD": "true"
       }
     },
@@ -27,7 +27,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://doto-backend-71tk.onrender.com",
+        "EXPO_PUBLIC_API_URL": "https://doto-anato.loca.lt",
         "EAS_BUILD": "true"
       }
     }

@@ -1,13 +1,13 @@
 import { ProUser } from "./theme";
 import { storage, PatientCacheItem } from "./storage";
 
-// Local : EXPO_PUBLIC_API_URL ou 127.0.0.1. Preview/prod EAS : URL Render.
+// Local : EXPO_PUBLIC_API_URL. Preview/prod EAS : tunnel local (doto-anato).
 const DEFAULT_HOST = "127.0.0.1";
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   (process.env.EAS_BUILD === "true"
-    ? "https://doto-backend-71tk.onrender.com"
-    : `http://${DEFAULT_HOST}:8000`);
+    ? "https://doto-anato.loca.lt"
+    : `http://${DEFAULT_HOST}:8001`);
 
 /** Aligne les URLs média (souvent 127.0.0.1) sur l’hôte API de l’app. */
 export function resolveMediaUrl(url?: string | null): string | null {
