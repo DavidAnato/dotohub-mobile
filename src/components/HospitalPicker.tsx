@@ -144,23 +144,19 @@ export function HospitalPicker({
             >
               <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
                   paddingHorizontal: 12,
                   borderBottomWidth: 1,
                   borderBottomColor: colors.border,
                 }}
               >
-                <Ionicons name="search" size={16} color={colors.muted} />
                 <TextInput
                   value={q}
                   onChangeText={setQ}
-                  placeholder="Rechercher par nom ou ville"
+                  placeholder="Rechercher…"
                   placeholderTextColor={colors.muted}
                   autoCapitalize="none"
                   autoFocus
-                  style={{ flex: 1, paddingVertical: 12, color: colors.text, fontSize: 15 }}
+                  style={{ paddingVertical: 12, color: colors.text, fontSize: 15 }}
                 />
               </View>
               {!filtered.length ? (
