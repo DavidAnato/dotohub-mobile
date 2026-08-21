@@ -1,6 +1,6 @@
-# Build APK Android sans EAS (preview interne).
-# Artifact : Actions → run → Artifacts → dotohub-mobile-android
-# Signing : assembleRelease avec le keystore debug Android (défaut Expo/RN).
+# Build APK Android installable (preview interne, sans EAS).
+# Artifact : Actions → run → Artifacts → dotohub-mobile-android → dotohub-debug.apk
+# Signing : assembleDebug = toujours signé avec le keystore debug Android.
 name: Android APK
 
 on:
@@ -66,36 +66,46 @@ jobs:
       - name: Expo prebuild (Android)
         run: npx expo prebuild --platform android --clean
 
-      - name: Verify release signing (debug keystore)
-        # Le template Expo/RN signe release avec signingConfigs.debug par défaut.
-        # Preview interne uniquement — pas pour le Play Store.
-        run: |
-          set -euo pipefail
-          grep -n "signingConfig" android/app/build.gradle || true
-          if ! grep -q "signingConfigs.debug" android/app/build.gradle; then
-            echo "::warning::signingConfigs.debug introuvable — le build release peut échouer."
-          fi
-
-      - name: Gradle assembleRelease
+      - name: Gradle assembleDebug
         working-directory: android
-        run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
 
-      - name: Package APK as app-release.apk
+      - name: Package and verify APK
         run: |
           set -euo pipefail
-          APK=$(find android/app/build/outputs/apk -name "*.apk" -type f | head -n 1)
-          if [ -z "${APK}" ]; then
-            echo "Aucun APK trouvé sous android/app/build/outputs/apk"
-            find android/app/build/outputs -type f || true
+          SRC="android/app/build/outputs/apk/debug/app-debug.apk"
+          OUT="dotohub-debug.apk"
+
+          if [ ! -f "${SRC}" ]; then
+            echo "APK debug introuvable: ${SRC}"
+            find android/app/build/outputs -type f -name "*.apk" 2>/dev/null || true
             exit 1
           fi
-          echo "APK source: ${APK} ($(du -h "${APK}" | cut -f1))"
-          cp "${APK}" app-release.apk
+
+          cp "${SRC}" "${OUT}"
+          SIZE=$(stat -c%s "${OUT}")
+          echo "APK: ${OUT} (${SIZE} bytes)"
+
+          if [ "${SIZE}" -lt 1048576 ]; then
+            echo "::error::APK trop petit (< 1 Mo) — build probablement incomplet."
+            exit 1
+          fi
+
+          # ZIP APK valide + entrées attendues
+          unzip -l "${OUT}" | head -n 40
+          unzip -l "${OUT}" | grep -q "AndroidManifest.xml"
+          unzip -l "${OUT}" | grep -Eq "classes(\.dex|[0-9]+\.dex)"
+
+          # Signature debug obligatoire pour l'installation
+          APKSIGNER=$(ls -1 "${ANDROID_HOME}/build-tools/"*/apksigner | sort -V | tail -n 1)
+          echo "apksigner: ${APKSIGNER}"
+          "${APKSIGNER}" verify --verbose "${OUT}"
+          echo "APK vérifié et signé OK."
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: dotohub-mobile-android
-          path: app-release.apk
+          path: dotohub-debug.apk
           if-no-files-found: error
           retention-days: 14
