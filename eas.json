@@ -18,7 +18,7 @@
         "autoIncrement": true
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://doto-anato.loca.lt",
+        "EXPO_PUBLIC_API_URL": "https://itchy-owl-100.loca.lt",
         "EAS_BUILD": "true"
       }
     },
@@ -27,7 +27,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://doto-anato.loca.lt",
+        "EXPO_PUBLIC_API_URL": "https://itchy-owl-100.loca.lt",
         "EAS_BUILD": "true"
       }
     }

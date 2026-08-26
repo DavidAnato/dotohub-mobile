@@ -19,7 +19,7 @@ on:
 
 env:
   # Aligné sur eas.json preview/production
-  EXPO_PUBLIC_API_URL: https://doto-anato.loca.lt
+  EXPO_PUBLIC_API_URL: https://itchy-owl-100.loca.lt
   CI: "true"
   EXPO_NO_TELEMETRY: "1"
 

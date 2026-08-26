@@ -1,12 +1,12 @@
 import { ProUser } from "./theme";
 import { storage, PatientCacheItem } from "./storage";
 
-// Local : EXPO_PUBLIC_API_URL. Preview/prod EAS : tunnel local (doto-anato).
+// Local : EXPO_PUBLIC_API_URL. Preview/prod EAS : tunnel local (localtunnel).
 const DEFAULT_HOST = "127.0.0.1";
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   (process.env.EAS_BUILD === "true"
-    ? "https://doto-anato.loca.lt"
+    ? "https://itchy-owl-100.loca.lt"
     : `http://${DEFAULT_HOST}:8001`);
 
 /** Aligne les URLs média (souvent 127.0.0.1) sur l’hôte API de l’app. */
