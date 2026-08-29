@@ -8,9 +8,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo-dotohub.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1E3755"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
@@ -51,8 +51,8 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#1E3755",
-          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#000000",
+          "image": "./assets/logo-dotohub.png",
           "imageWidth": 220,
           "resizeMode": "contain"
         }

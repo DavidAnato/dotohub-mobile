@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, Image, StatusBar, Text, View, Modal } from "react-native";
+import { AppState, Image, StatusBar, View, Modal } from "react-native";
 import { AppDialogHost, appAlert } from "./src/components/AppDialog";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
@@ -10,10 +10,9 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { LinearGradient } from "expo-linear-gradient";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SplashScreen from "expo-splash-screen";
-import { C, brandNavy, onBrand } from "./src/theme";
+import { C, brandNavy } from "./src/theme";
 import { api, setSessionExpiredHandler } from "./src/api";
 import { storage } from "./src/storage";
 import { wipeClientCaches } from "./src/session";
@@ -49,22 +48,15 @@ function BootView() {
   }));
 
   return (
-    <LinearGradient
-      colors={[brandNavy, "#243F5C", C.blue]}
-      style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-    >
+    <View style={{ flex: 1, backgroundColor: "#000000", alignItems: "center", justifyContent: "center" }}>
       <Animated.View style={style}>
         <Image
-          source={require("./assets/splash-icon.png")}
-          style={{ width: 200, height: 64 }}
+          source={require("./assets/logo-dotohub.png")}
+          style={{ width: 220, height: 52 }}
           resizeMode="contain"
         />
       </Animated.View>
-      <Text style={{ color: onBrand, marginTop: 18, fontWeight: "800", fontSize: 20 }}>DotoHub</Text>
-      <Text style={{ color: "rgba(255,255,255,0.65)", marginTop: 6, fontSize: 13 }}>
-        Professionnels de santé
-      </Text>
-    </LinearGradient>
+    </View>
   );
 }
 
