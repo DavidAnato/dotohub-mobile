@@ -34,6 +34,22 @@ async function hideSplash() {
   }
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("timeout")), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
 function BootView() {
   const pulse = useSharedValue(0.97);
   useEffect(() => {
@@ -48,11 +64,11 @@ function BootView() {
   }));
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000000", alignItems: "center", justifyContent: "center" }}>
+    <View style={{ flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}>
       <Animated.View style={style}>
         <Image
-          source={require("./assets/logo-dotohub.png")}
-          style={{ width: 220, height: 52 }}
+          source={require("./assets/logo-splash.png")}
+          style={{ width: 240, height: 64 }}
           resizeMode="contain"
         />
       </Animated.View>
@@ -144,39 +160,48 @@ function AppInner() {
   }, [phase, needsPinSetup, setLocked]);
 
   useEffect(() => {
+    let cancelled = false;
+    const failSafe = setTimeout(() => {
+      if (cancelled) return;
+      if (useAppStore.getState().phase === "boot") setPhase("login");
+      void hideSplash();
+    }, 8000);
+
     (async () => {
       try {
         const token = await storage.getAccess();
         if (token) {
           try {
-            const me = await api.me();
+            const me = await withTimeout(api.me(), 6000);
             if (me) {
               enterMain(me);
-              if (me.pin_set) {
-                const bioOk = await tryBiometricUnlock();
-                if (!bioOk) setLocked(true);
-                else setLocked(false);
-              }
               return;
             }
           } catch {
             const cached = await storage.getUser();
             if (cached) {
               enterMain(cached);
-              if (cached.pin_set) {
-                const bioOk = await tryBiometricUnlock();
-                if (!bioOk) setLocked(true);
-                else setLocked(false);
-              }
+              if (cached.pin_set) setLocked(true);
               return;
             }
           }
         }
         setPhase("login");
       } finally {
+        clearTimeout(failSafe);
         await hideSplash();
+        const st = useAppStore.getState();
+        if (st.phase === "main" && st.user?.pin_set && !st.needsPinSetup) {
+          const bioOk = await tryBiometricUnlock();
+          if (!bioOk) setLocked(true);
+          else setLocked(false);
+        }
       }
     })();
+    return () => {
+      cancelled = true;
+      clearTimeout(failSafe);
+    };
   }, [enterMain, setPhase, setLocked, tryBiometricUnlock]);
 
   useEffect(() => {
@@ -298,6 +323,10 @@ function AppInner() {
 }
 
 export default function App() {
+  useEffect(() => {
+    const t = setTimeout(() => void hideSplash(), 400);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <SafeAreaProvider>
       <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>

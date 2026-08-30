@@ -6,7 +6,7 @@ const DEFAULT_HOST = "127.0.0.1";
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   (process.env.EAS_BUILD === "true"
-    ? "https://itchy-owl-100.loca.lt"
+    ? "https://doto-anato.loca.lt"
     : `http://${DEFAULT_HOST}:8001`);
 
 /** Aligne les URLs média (souvent 127.0.0.1) sur l’hôte API de l’app. */
@@ -109,13 +109,23 @@ async function request(path: string, options: RequestInit = {}, retry = true): P
     ...(await authHeaders()),
     ...(options.headers as Record<string, string> | undefined),
   };
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
-  if (res.status === 401 && retry) {
-    const hadAuth = !!(await storage.getAccess()) || !!(await storage.getRefresh());
-    if (await tryRefresh()) return request(path, options, false);
-    if (hadAuth) await notifySessionExpired();
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 10000);
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      signal: options.signal ?? ac.signal,
+    });
+    if (res.status === 401 && retry) {
+      const hadAuth = !!(await storage.getAccess()) || !!(await storage.getRefresh());
+      if (await tryRefresh()) return request(path, options, false);
+      if (hadAuth) await notifySessionExpired();
+    }
+    return res;
+  } finally {
+    clearTimeout(timer);
   }
-  return res;
 }
 
 async function requestJson<T = any>(path: string, options: RequestInit = {}): Promise<T> {
