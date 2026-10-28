@@ -20,7 +20,7 @@ on:
 
 env:
   # Aligné sur eas.json preview/production
-  EXPO_PUBLIC_API_URL: https://doto-anato.loca.lt
+  EXPO_PUBLIC_API_URL: https://doto-api.await-tech.com
   CI: "true"
   EXPO_NO_TELEMETRY: "1"
 
