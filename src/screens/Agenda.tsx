@@ -22,6 +22,7 @@ import {
 import PatientSelectSearch from "../components/PatientSelectSearch";
 import { Avatar } from "../components/Avatar";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePullRefresh } from "../hooks/usePullRefresh";
 import {
   findAppointmentConflict,
   formatConflictLabel,
