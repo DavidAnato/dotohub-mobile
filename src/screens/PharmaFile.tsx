@@ -6,6 +6,7 @@ import PatientSelectSearch, {
   type PatientOption,
 } from "../components/PatientSelectSearch";
 import { api } from "../api";
+import { labelStatut } from "../apiMessage";
 import { usePullRefresh } from "../hooks/usePullRefresh";
 import {
   BrandBackground,
@@ -205,7 +206,7 @@ export default function PharmaFile({
                         textTransform: "uppercase",
                       }}
                     >
-                      {item.statut_label || item.statut || "active"}
+                      {labelStatut(item.statut, item.statut_label)}
                     </Text>
                   </View>
                   <Text style={{ color: colors.muted, fontSize: 12 }}>

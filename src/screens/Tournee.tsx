@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { labelStatut } from "../apiMessage";
 import { appAlert } from "../components/AppDialog";
 import { Avatar } from "../components/Avatar";
 import { usePullRefresh } from "../hooks/usePullRefresh";
@@ -143,7 +144,7 @@ export default function Tournee({
                         fontSize: 12,
                       }}
                     >
-                      {a.statut_label || a.statut}
+                      {labelStatut(a.statut, a.statut_label)}
                     </Text>
                   </View>
                 </View>

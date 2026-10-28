@@ -62,7 +62,7 @@ export default function Recherche({
       const cache = await storage.getCachedPatients();
       setResults(cache);
       setOfflineHint(true);
-      setError(e.message || "Recherche hors ligne - cache local.");
+      setError(e.message || "Recherche indisponible hors ligne.");
     }
   };
 
@@ -109,7 +109,7 @@ export default function Recherche({
           ) : null}
           {offlineHint ? (
             <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 8 }}>
-              Affichage du cache local (hors ligne ou dernier résultat).
+              Dernière recherche enregistrée sur cet appareil.
             </Text>
           ) : null}
           <Button title="Rechercher" icon="search-outline" onPress={search} loading={busy} color={C.teal} />

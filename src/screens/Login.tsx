@@ -17,7 +17,7 @@ export default function Login({
 }) {
   const colors = dark ? darkC : C;
   const { scrollBottom } = useScreenInsets();
-  const [username, setUsername] = useState("medecin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -70,7 +70,6 @@ export default function Login({
                 label="Identifiant"
                 value={username}
                 onChangeText={setUsername}
-                placeholder="medecin"
                 colors={colors}
               />
               <Field
@@ -98,18 +97,6 @@ export default function Login({
                 <Text style={{ color: accent, fontWeight: "700" }}>Créer un compte</Text>
               </Text>
             </Pressable>
-
-            <Text
-              style={{
-                textAlign: "center",
-                color: colors.grey,
-                fontSize: 12,
-                marginTop: 28,
-                lineHeight: 18,
-              }}
-            >
-              Ex. medecin / Medecin123! · ambulancier / Ambulancier123!
-            </Text>
           </View>
         </ScrollView>
       </ScreenEnter>

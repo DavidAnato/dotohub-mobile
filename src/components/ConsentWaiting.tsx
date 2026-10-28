@@ -30,13 +30,14 @@ export function ConsentWaitingView({
   patientName,
   emergency,
   role,
+  message,
   dark,
   onCancel,
 }: {
   patientName?: string;
   emergency?: boolean;
-  /** Rôle du pro demandeur - adapte le message d'attente. */
   role?: string;
+  message?: string;
   dark?: boolean;
   onCancel?: () => void;
 }) {
@@ -85,12 +86,16 @@ export function ConsentWaitingView({
           <ActivityIndicator size="large" color={C.teal} />
         </View>
         <Text style={{ color: colors.navy, fontWeight: "800", fontSize: 17, textAlign: "center" }}>
-          Demande envoyée au patient…
+          {message && message.toLowerCase().includes("hôpital mère")
+            ? "Demande envoyée à l'hôpital mère…"
+            : "Demande envoyée au patient…"}
         </Text>
         <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", lineHeight: 19 }}>
-          {patientName
-            ? `${patientName} doit confirmer dans l'application DOTO+.`
-            : "Le patient doit confirmer dans l'application DOTO+."}
+          {message
+            ? message
+            : patientName
+              ? `${patientName} doit confirmer dans l'application DOTO+.`
+              : "Le patient doit confirmer dans l'application DOTO+."}
         </Text>
         {hint ? (
           <Text

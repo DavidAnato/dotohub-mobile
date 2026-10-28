@@ -106,6 +106,7 @@ export type RoleNavStackScreen =
   | "LaboFile"
   | "Tournee"
   | "NouveauPatient"
+  | "Demandes"
   | "UrgencePro";
 
 export type RoleNavCta = {
@@ -127,9 +128,16 @@ export function roleHomeCtas(role: string): RoleNavCta[] {
         {
           id: "nouveau-patient",
           title: "Nouveau patient",
-          subtitle: "Créer un dossier",
+          subtitle: "Créer un dossier sans téléphone",
           icon: "person-add-outline",
           target: "NouveauPatient",
+        },
+        {
+          id: "demandes",
+          title: "Demandes d'accès",
+          subtitle: "À accepter pour l'hôpital mère",
+          icon: "shield-checkmark-outline",
+          target: "Demandes",
         },
         {
           id: "rdv",
@@ -178,6 +186,33 @@ export function roleHomeCtas(role: string): RoleNavCta[] {
           icon: "qr-code-outline",
           target: "scan",
           emphasis: true,
+        },
+      ];
+    case "medecin":
+      return [
+        {
+          id: "demandes",
+          title: "Demandes d'accès",
+          subtitle: "Si vous êtes le médecin référent",
+          icon: "shield-checkmark-outline",
+          target: "Demandes",
+        },
+      ];
+    case "admin":
+      return [
+        {
+          id: "nouveau-patient",
+          title: "Nouveau patient",
+          subtitle: "Créer un dossier sans téléphone",
+          icon: "person-add-outline",
+          target: "NouveauPatient",
+        },
+        {
+          id: "demandes",
+          title: "Demandes d'accès",
+          subtitle: "File de l'hôpital mère",
+          icon: "shield-checkmark-outline",
+          target: "Demandes",
         },
       ];
     default:

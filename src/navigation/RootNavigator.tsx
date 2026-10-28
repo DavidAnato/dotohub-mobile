@@ -30,6 +30,7 @@ import PharmaFile from "../screens/PharmaFile";
 import LaboFile from "../screens/LaboFile";
 import Tournee from "../screens/Tournee";
 import NouveauPatient from "../screens/NouveauPatient";
+import Demandes from "../screens/Demandes";
 import UrgencePro from "../screens/UrgencePro";
 import { ConsentWaitingView } from "../components/ConsentWaiting";
 import { BrandBackground } from "../motion";
@@ -46,11 +47,13 @@ type ConsentProps = NativeStackScreenProps<RootStackParamList, "ConsentWaiting">
 /** Ferme le dossier en temps réel si le patient révoque l'accès (SSE). */
 function PatientScreenGate({
   patientId,
+  consultId,
   user,
   dark,
   onBack,
 }: {
   patientId: number;
+  consultId?: number;
   user: NonNullable<ReturnType<typeof useAppStore.getState>["user"]>;
   dark: boolean;
   onBack: () => void;
@@ -68,7 +71,13 @@ function PatientScreenGate({
   }, [accessKick, patientId, clearAccessKick, onBack]);
 
   return (
-    <PatientDossier patientId={patientId} user={user} dark={dark} onBack={onBack} />
+    <PatientDossier
+      patientId={patientId}
+      consultId={consultId}
+      user={user}
+      dark={dark}
+      onBack={onBack}
+    />
   );
 }
 
@@ -111,7 +120,7 @@ function OfflineBanner() {
     >
       <Ionicons name="cloud-offline-outline" size={16} color={colors.amber} />
       <Text style={{ color: colors.amber, fontWeight: "700", fontSize: 12, flex: 1 }}>
-        Hors ligne - cache local, file d'actions rejouée à la reconnexion
+        Hors ligne — vos actions seront enregistrées au retour du réseau.
       </Text>
     </View>
   );
@@ -120,7 +129,7 @@ function OfflineBanner() {
 function ConsentWaitingScreen({ route, navigation }: ConsentProps) {
   const dark = useAppStore((s) => s.dark);
   const setPendingConsent = useAppStore((s) => s.setPendingConsent);
-  const { name, npi, patientId, accessRequestId } = route.params;
+  const { name, npi, patientId, accessRequestId, message } = route.params;
   const colors = dark ? darkC : C;
   const handledRef = useRef(false);
 
@@ -179,6 +188,7 @@ function ConsentWaitingScreen({ route, navigation }: ConsentProps) {
       />
       <ConsentWaitingView
         patientName={name}
+        message={message}
         dark={dark}
         onCancel={async () => {
           handledRef.current = true;
@@ -213,6 +223,7 @@ const STACK_FROM_HOME = new Set([
   "LaboFile",
   "Tournee",
   "NouveauPatient",
+  "Demandes",
   "UrgencePro",
 ]);
 
@@ -273,13 +284,14 @@ function MainTabs() {
           borderTopWidth: 1,
           paddingBottom: tabBarPad,
           paddingTop: 6,
-          height: 52 + tabBarPad,
+          height: 68 + tabBarPad,
           elevation: 8,
           shadowColor: brandNavy,
           shadowOpacity: 0.06,
           shadowRadius: 8,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: "700" },
+        tabBarAllowFontScaling: false,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
         tabBarIcon: ({ color, focused, size }) => {
           let name: keyof typeof Ionicons.glyphMap = "home-outline";
           if (route.name === "Home") name = focused ? "home" : "home-outline";
@@ -305,6 +317,10 @@ function MainTabs() {
           <Scan
             dark={dark}
             onScanned={(id, _npi, meta) => {
+              if (meta?.durationRequired) {
+                navigation.getParent()?.navigate("Patient", { patientId: id });
+                return;
+              }
               const goUrgence =
                 user.role === "ambulancier" || !!meta?.emergency;
               if (goUrgence) {
@@ -318,6 +334,7 @@ function MainTabs() {
             onPendingConsent={(info) => {
               navigation.getParent()?.navigate("ConsentWaiting", info);
             }}
+            onIdRead={() => navigation.getParent()?.navigate("NouveauPatient")}
           />
         )}
       </Tab.Screen>
@@ -380,6 +397,7 @@ function MainNavigator() {
           {({ route, navigation }) => (
             <PatientScreenGate
               patientId={route.params.patientId}
+              consultId={route.params.consultId}
               user={user}
               dark={dark}
               onBack={() => {
@@ -427,6 +445,17 @@ function MainNavigator() {
                 if (navigation.canGoBack()) navigation.goBack();
               }}
               onSaved={(id) => navigation.replace("Patient", { patientId: id })}
+            />
+          )}
+        </RootStack.Screen>
+        <RootStack.Screen name="Demandes">
+          {({ navigation }) => (
+            <Demandes
+              dark={dark}
+              onBack={() => {
+                if (navigation.canGoBack()) navigation.goBack();
+              }}
+              onOpenPatient={(id) => navigation.navigate("Patient", { patientId: id })}
             />
           )}
         </RootStack.Screen>

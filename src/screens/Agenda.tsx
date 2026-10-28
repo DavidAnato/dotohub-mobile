@@ -5,6 +5,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Button, Card, Field, Header, SectionLabel } from "../ui";
 import { C, ProUser, darkC } from "../theme";
 import { api } from "../api";
+import { labelStatut } from "../apiMessage";
 import {
   BrandBackground,
   EmptyState,
@@ -21,7 +22,11 @@ import {
 import PatientSelectSearch from "../components/PatientSelectSearch";
 import { Avatar } from "../components/Avatar";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePullRefresh } from "../hooks/usePullRefresh";
+import {
+  findAppointmentConflict,
+  formatConflictLabel,
+  isPastDateTime,
+} from "../utils/appointmentRules";
 
 /** Création / gestion RDV : médecins, réceptionniste, admin */
 const WRITE_ROLES = new Set(["medecin", "receptionniste", "admin"]);
@@ -87,27 +92,54 @@ export default function Agenda({
     return [...items].sort((a, b) => new Date(a.debut).getTime() - new Date(b.debut).getTime());
   }, [items]);
 
-  const create = async () => {
+  const submitCreate = async () => {
     const pid = Number(patientId);
     if (!pid) {
       appAlert("Patient requis", "Sélectionnez un patient.");
+      return;
+    }
+    if (isPastDateTime(debut)) {
+      appAlert("Date invalide", "La date du rendez-vous ne peut pas être dans le passé.");
       return;
     }
     if (isReception && rdvMode === "medecin" && !medecinId) {
       appAlert("Médecin", "Choisissez un médecin ou RDV réception.");
       return;
     }
+    const body: Record<string, unknown> = {
+      patient: pid,
+      debut: toIsoLocal(debut),
+      motif: motif.trim() || "Consultation",
+    };
+    let profId: number | undefined;
+    if (isMedecin) {
+      body.professionnel = user.id;
+      profId = user.id;
+    } else if ((isReception || user.role === "admin") && rdvMode === "medecin" && medecinId) {
+      body.professionnel = Number(medecinId);
+      profId = Number(medecinId);
+    }
+    const conflict = findAppointmentConflict(items, debut, profId);
+    if (conflict) {
+      appAlert(
+        "Créneau occupé",
+        `Un rendez-vous existe déjà le ${formatConflictLabel(conflict)}.\n\nCréer quand même ce créneau ?`,
+        [
+          { text: "Annuler", style: "cancel" },
+          {
+            text: "Créer quand même",
+            onPress: () => void doCreate(body),
+          },
+        ]
+      );
+      return;
+    }
+    await doCreate(body);
+  };
+
+  const doCreate = async (body: Record<string, unknown>) => {
     setBusy(true);
     try {
-      const body: Record<string, unknown> = {
-        patient: pid,
-        debut: toIsoLocal(debut),
-        motif: motif.trim() || "Consultation",
-      };
-      if (isMedecin) body.professionnel = user.id;
-      else if ((isReception || user.role === "admin") && rdvMode === "medecin" && medecinId) {
-        body.professionnel = Number(medecinId);
-      }
       await api.createAppointment(body);
       setPatientId("");
       setMotif("");
@@ -122,6 +154,10 @@ export default function Agenda({
     } finally {
       setBusy(false);
     }
+  };
+
+  const create = () => {
+    void submitCreate();
   };
 
   const setStatut = (id: number, statut: string, label: string) => {
@@ -399,11 +435,11 @@ export default function Agenda({
                     >
                       {a.statut === "planifie" && a.professionnel
                         ? "À confirmer"
-                        : a.statut_label || a.statut}
+                        : labelStatut(a.statut, a.statut_label)}
                     </Text>
                   </View>
                 </View>
-                    {canWrite && a.statut !== "annule" && a.statut !== "termine" ? (
+                    {canWrite && a.statut !== "annule" && (a.statut !== "termine" || a.consultation_incomplete) ? (
                   <View style={{ flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                     {(isMedecin || user.role === "admin") &&
                     a.statut === "planifie" &&
@@ -424,20 +460,32 @@ export default function Agenda({
                         }}
                       />
                     ) : null}
-                    {(isMedecin || user.role === "admin") && a.statut === "confirme" ? (
+                    {(isMedecin || user.role === "admin") &&
+                    (a.statut === "confirme" ||
+                      a.statut === "planifie" ||
+                      a.consultation_incomplete) ? (
                       <Button
-                        title="Démarrer la consultation"
+                        title={
+                          a.consultation_id
+                            ? "Continuer la consultation"
+                            : "Démarrer la consultation"
+                        }
                         icon="play-circle-outline"
                         compact
                         color={C.blue}
                         onPress={async () => {
                           try {
-                            const c = await api.demarrerConsultation(a.id);
+                            const c = a.consultation_id
+                              ? { id: a.consultation_id, patient: a.patient }
+                              : await api.demarrerConsultation(a.id);
                             hapticSuccess();
                             await load();
                             const pid = c?.patient || a.patient;
                             if (pid) {
-                              navigation.getParent()?.navigate("Patient", { patientId: pid });
+                              navigation.getParent()?.navigate("Patient", {
+                                patientId: pid,
+                                consultId: c?.id,
+                              });
                             }
                           } catch (e: any) {
                             appAlert("Erreur", e.message || "Impossible de démarrer");

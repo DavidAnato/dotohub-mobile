@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { appAlert } from "../components/AppDialog";
 import { C, darkC, ProUser, ROLE_TABS, TAB_LABELS, brandNavy, onBrand } from "../theme";
 import { api } from "../api";
+import { labelStatut } from "../apiMessage";
 import {
   useConsultations,
   useConstantes,
@@ -11,8 +12,9 @@ import {
   useOrdonnances,
   usePatientQuery,
 } from "../queries/hooks";
-import { Button, Card, Header, UrgenceBanner } from "../ui";
+import { Button, Card, Field, Header, UrgenceBanner } from "../ui";
 import { ConsentWaitingView } from "../components/ConsentWaiting";
+import { EtablissementActions } from "../components/EtablissementActions";
 import {
   DateTimePickerField,
   defaultRdvDate,
@@ -29,6 +31,11 @@ import {
   StaggerItem,
 } from "../motion";
 import { Avatar } from "../components/Avatar";
+import {
+  findAppointmentConflict,
+  formatConflictLabel,
+  isPastDateTime,
+} from "../utils/appointmentRules";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePullRefresh } from "../hooks/usePullRefresh";
 import { qk } from "../queries/keys";
@@ -41,7 +48,7 @@ import {
   emptyMedLine,
   nowDateISO,
   nowISO,
-  summarizeMed,
+  medSheet,
   type MedLine,
 } from "../constants";
 
@@ -54,6 +61,42 @@ const FULL_ACCESS_ROLES = new Set([
   "laborantin",
   "receptionniste",
 ]);
+
+function RxMed({
+  m,
+  text,
+  muted,
+  border,
+}: {
+  m: any;
+  text: string;
+  muted: string;
+  border: string;
+}) {
+  const sheet = medSheet(m);
+  if (!sheet.head && !sheet.quantite) return null;
+  return (
+    <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: border }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <Text style={{ flex: 1, color: text, fontWeight: "800", fontSize: 14, lineHeight: 20 }}>{sheet.head}</Text>
+        {sheet.quantite ? (
+          <Text style={{ color: text, fontWeight: "800", fontSize: 14 }}>{sheet.quantite}</Text>
+        ) : null}
+      </View>
+      {sheet.posologie ? (
+        <Text style={{ color: text, fontSize: 13, marginTop: 4, lineHeight: 18 }}>Posologie : {sheet.posologie}</Text>
+      ) : null}
+      {sheet.duree ? (
+        <Text style={{ color: text, fontSize: 13, marginTop: 2, lineHeight: 18 }}>
+          Durée du traitement : {sheet.duree}
+        </Text>
+      ) : null}
+      {sheet.instructions ? (
+        <Text style={{ color: muted, fontSize: 12, marginTop: 2, lineHeight: 17 }}>{sheet.instructions}</Text>
+      ) : null}
+    </View>
+  );
+}
 
 function pickNextAppointment(list: any[] | undefined) {
   if (!list?.length) return null;
@@ -68,11 +111,13 @@ function pickNextAppointment(list: any[] | undefined) {
 
 export default function PatientDossier({
   patientId,
+  consultId,
   user,
   dark,
   onBack,
 }: {
   patientId: number;
+  consultId?: number;
   user: ProUser;
   dark?: boolean;
   onBack: () => void;
@@ -80,6 +125,7 @@ export default function PatientDossier({
   const colors = dark ? darkC : C;
   const tabs = ROLE_TABS[user.role] || ["constantes"];
   const [tab, setTab] = useState(tabs[0]);
+  const [editConsult, setEditConsult] = useState<any | null>(null);
   const { data: patient, isLoading: loading, refetch } = usePatientQuery(patientId);
   const qc = useQueryClient();
   const { data: patientAppts } = useQuery({
@@ -94,6 +140,7 @@ export default function PatientDossier({
   const offline = !storeOnline && !!(patient as any)?._offline;
   const fromCache = !!(patient as any)?._fromCache || (!!offline && !!(patient as any)?._offline);
   const [requesting, setRequesting] = useState(false);
+  const [dureeHeures, setDureeHeures] = useState("24");
   const [showRdv, setShowRdv] = useState(false);
   const [rdvBusy, setRdvBusy] = useState(false);
   const [motif, setMotif] = useState("Consultation");
@@ -102,6 +149,14 @@ export default function PatientDossier({
   const [medecinId, setMedecinId] = useState("");
   const [medecins, setMedecins] = useState<{ id: number; full_name?: string }[]>([]);
   const canWriteRdv = RDV_WRITE_ROLES.has(user.role);
+  const { data: agendaAppts = [] } = useQuery({
+    queryKey: ["appointments"],
+    queryFn: async () => {
+      const list = await api.appointments();
+      return Array.isArray(list) ? list : [];
+    },
+    enabled: canWriteRdv && showRdv,
+  });
   const isReception = user.role === "receptionniste";
 
   useEffect(() => {
@@ -115,8 +170,21 @@ export default function PatientDossier({
     void api.listMedecinsRdv().then((list) => setMedecins(Array.isArray(list) ? list : []));
   }, [canWriteRdv, isReception, user.role]);
 
-  const needsAccess = !!patient?.consent?.required && !patient?.consent?.granted;
-  const pending = !!patient?.consent?.pending;
+  const grantEnd = patient?.consent?.grant_expires_at;
+  const grantEndedLocally =
+    !!patient?.consent?.granted &&
+    !patient?.consent?.direct_structure &&
+    !patient?.consent?.admin &&
+    !!grantEnd &&
+    !Number.isNaN(Date.parse(String(grantEnd))) &&
+    Date.now() >= Date.parse(String(grantEnd));
+  const needsAccess =
+    !!patient?.consent?.expired ||
+    grantEndedLocally ||
+    (!!patient?.consent?.required && !patient?.consent?.granted);
+  const pending = !!patient?.consent?.pending && !patient?.consent?.expired;
+  const dossierMasque = !!patient?.consent?.dossier_masque;
+  const needsDuration = !!patient?.consent?.needs_duration || patient?.consent?.route === "hopital_mere";
   const canRequestFull =
     needsAccess &&
     user.role !== "admin" &&
@@ -129,10 +197,33 @@ export default function PatientDossier({
     return () => clearInterval(t);
   }, [needsAccess, pending, offline, refetch]);
 
+  useEffect(() => {
+    if (!patient?.consent?.granted || patient?.consent?.direct_structure || patient?.consent?.admin) return;
+    const end = patient?.consent?.grant_expires_at;
+    if (!end) return;
+    const ms = Date.parse(String(end)) - Date.now();
+    if (Number.isNaN(ms)) return;
+    const t = setTimeout(() => {
+      void refetch();
+    }, Math.max(0, ms) + 500);
+    return () => clearTimeout(t);
+  }, [patient?.consent?.grant_expires_at, patient?.consent?.granted, patient?.consent?.direct_structure, patient?.consent?.admin, refetch]);
+
+  useEffect(() => {
+    if (!patient?.consent?.expired && !grantEndedLocally) return;
+    appAlert("Accès", "Cet accès a expiré", [{ text: "OK", onPress: onBack }]);
+    onBack();
+  }, [patient?.consent?.expired, grantEndedLocally, onBack]);
+
   const requestFullAccess = async () => {
+    const hours = Number(dureeHeures);
+    if (needsDuration && (!Number.isFinite(hours) || hours < 1)) {
+      appAlert("Durée", "Indiquez la durée d'accès en heures.");
+      return;
+    }
     setRequesting(true);
     try {
-      await api.requestAccess(patientId);
+      await api.requestAccess(patientId, needsDuration ? { durationHours: hours } : false);
       await refetch();
     } catch (e: any) {
       appAlert("Erreur", e.message || "Impossible de demander l'accès.");
@@ -142,22 +233,45 @@ export default function PatientDossier({
   };
 
   const createRdv = async () => {
+    if (isPastDateTime(debut)) {
+      appAlert("Date invalide", "La date du rendez-vous ne peut pas être dans le passé.");
+      return;
+    }
     if (isReception && rdvMode === "medecin" && !medecinId) {
       appAlert("Médecin", "Choisissez un médecin, ou passez en RDV réception.");
       return;
     }
+    const body: Record<string, unknown> = {
+      patient: patientId,
+      debut: toIsoLocal(debut),
+      motif: motif.trim() || "Consultation",
+    };
+    let profId: number | undefined;
+    if (user.role === "medecin") {
+      body.professionnel = user.id;
+      profId = user.id;
+    } else if ((isReception || user.role === "admin") && rdvMode === "medecin" && medecinId) {
+      body.professionnel = Number(medecinId);
+      profId = Number(medecinId);
+    }
+    const conflict = findAppointmentConflict(agendaAppts, debut, profId);
+    if (conflict) {
+      appAlert(
+        "Créneau occupé",
+        `Un rendez-vous existe déjà le ${formatConflictLabel(conflict)}.\n\nCréer quand même ce créneau ?`,
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Créer quand même", onPress: () => void finalizeRdv(body) },
+        ]
+      );
+      return;
+    }
+    await finalizeRdv(body);
+  };
+
+  const finalizeRdv = async (body: Record<string, unknown>) => {
     setRdvBusy(true);
     try {
-      const body: Record<string, unknown> = {
-        patient: patientId,
-        debut: toIsoLocal(debut),
-        motif: motif.trim() || "Consultation",
-      };
-      if (user.role === "medecin") {
-        body.professionnel = user.id;
-      } else if ((isReception || user.role === "admin") && rdvMode === "medecin" && medecinId) {
-        body.professionnel = Number(medecinId);
-      }
       await api.createAppointment(body);
       void qc.invalidateQueries({ queryKey: ["appointments"] });
       setShowRdv(false);
@@ -179,8 +293,19 @@ export default function PatientDossier({
   };
 
   const consultations = useConsultations(
-    tab === "historique" && !offline && !needsAccess ? patientId : undefined
+    !offline && !needsAccess && (tab === "historique" || !!consultId)
+      ? patientId
+      : undefined
   );
+
+  useEffect(() => {
+    if (!consultId || !consultations.data) return;
+    const found = (consultations.data as any[]).find((c) => c.id === consultId);
+    if (found) {
+      setTab("historique");
+      setEditConsult(found);
+    }
+  }, [consultId, consultations.data]);
   const ordonnances = useOrdonnances(
     tab === "ordonnances" && !offline && !needsAccess ? patientId : undefined
   );
@@ -505,6 +630,7 @@ export default function PatientDossier({
         <ConsentWaitingView
           patientName={patient.full_name}
           role={user.role}
+          message={patient.consent?.message}
           dark={dark}
           onCancel={async () => {
             const accessId = patient?.consent?.access_request_id;
@@ -536,7 +662,24 @@ export default function PatientDossier({
           contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }}
           refreshControl={refreshControl}
         >
-          {patient.urgence ? <UrgenceBanner u={patient.urgence} colors={colors} /> : null}
+          {dossierMasque || !patient.urgence ? null : <UrgenceBanner u={patient.urgence} colors={colors} />}
+          {needsDuration ? (
+            <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+              <Field
+                label="Durée demandée (heures)"
+                value={dureeHeures}
+                onChangeText={setDureeHeures}
+                keyboardType="number-pad"
+                placeholder="24"
+              />
+            </View>
+          ) : null}
+          <EtablissementActions
+            patientId={patientId}
+            etablissement={patient.etablissement}
+            dark={dark}
+            onChanged={() => void refetch()}
+          />
           <NextRdvCard
             nextRdv={nextRdv}
             colors={colors}
@@ -554,7 +697,7 @@ export default function PatientDossier({
               </Text>
               {canRequestFull ? (
                 <Button
-                  title={requesting ? "Envoi…" : "Demander l'accès"}
+                  title={requesting ? "Envoi…" : needsDuration ? "Demander à l'hôpital mère" : "Demander l'accès"}
                   icon="lock-open-outline"
                   onPress={requestFullAccess}
                   loading={requesting}
@@ -584,6 +727,12 @@ export default function PatientDossier({
         />
         <View style={{ height: 16 }} />
         {emergency ? <ConsentWaitingView emergency dark={dark} /> : null}
+        <EtablissementActions
+          patientId={patientId}
+          etablissement={patient.etablissement}
+          dark={dark}
+          onChanged={() => void refetch()}
+        />
         {offline ? (
           <Text
             style={{
@@ -593,7 +742,7 @@ export default function PatientDossier({
               marginBottom: 8,
             }}
           >
-            Mode cache hors ligne
+            Hors ligne
           </Text>
         ) : fromCache ? (
           <Text
@@ -605,7 +754,7 @@ export default function PatientDossier({
               fontSize: 12,
             }}
           >
-            Dossier en cache (sync serveur indisponible)
+            Dernière version enregistrée sur cet appareil
           </Text>
         ) : null}
         {rdvModal}
@@ -676,7 +825,7 @@ export default function PatientDossier({
             <Card colors={colors} style={{ gap: 8 }}>
               <Text style={{ fontWeight: "800", color: colors.text }}>Demandes d'examens</Text>
               {bons.map((b: any) => {
-                const st = BON_STATUTS[b.statut] || { label: b.statut_label || b.statut, color: C.blue };
+                const st = BON_STATUTS[b.statut] || { label: labelStatut(b.statut, b.statut_label), color: C.blue };
                 return (
                   <View key={b.id} style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
                     <Text style={{ fontWeight: "700", color: colors.text }}>Bon #{b.id}</Text>
@@ -721,12 +870,28 @@ export default function PatientDossier({
                       <Text style={{ color: colors.text, fontSize: 13, marginTop: 2 }}>
                         {item.structure_nom || "Structure non renseignée"}
                       </Text>
+                      {item.incomplete ? (
+                        <Text style={{ color: C.amber, fontSize: 12, fontWeight: "700", marginTop: 6 }}>
+                          À compléter
+                        </Text>
+                      ) : null}
                       {(user.role === "medecin" || user.role === "admin") && !item.annule ? (
-                        <Button
-                          title="Annuler la consultation"
-                          icon="close-circle-outline"
-                          color={colors.muted}
-                          compact
+                        <View style={{ flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                          <Button
+                            title={item.incomplete ? "Compléter" : "Modifier"}
+                            icon="create-outline"
+                            compact
+                            color={C.blue}
+                            onPress={() => {
+                              setTab("historique");
+                              setEditConsult(item);
+                            }}
+                          />
+                          <Button
+                            title="Annuler la consultation"
+                            icon="close-circle-outline"
+                            color={colors.muted}
+                            compact
                           style={{ marginTop: 10 }}
                           onPress={() => {
                             appAlert(
@@ -750,6 +915,7 @@ export default function PatientDossier({
                             );
                           }}
                         />
+                        </View>
                       ) : null}
                     </>
                   )}
@@ -775,15 +941,16 @@ export default function PatientDossier({
                         </Text>
                       ) : null}
                       <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
-                        {item.statut_label || item.statut}
+                        {labelStatut(item.statut, item.statut_label)}
                       </Text>
                       {(item.medicaments || []).map((m: any) => (
-                        <Text
+                        <RxMed
                           key={m.id || m.nom}
-                          style={{ color: colors.text, fontSize: 13, marginTop: 6, lineHeight: 19 }}
-                        >
-                          • {summarizeMed(m)}
-                        </Text>
+                          m={m}
+                          text={colors.text}
+                          muted={colors.muted}
+                          border={colors.border}
+                        />
                       ))}
                       {item.instructions ? (
                         <Text style={{ color: colors.muted, fontSize: 12, marginTop: 6 }}>
@@ -956,7 +1123,12 @@ export default function PatientDossier({
               patientId={patientId}
               user={user}
               colors={colors}
-              onDone={() => consultations.refetch()}
+              initial={editConsult}
+              onCancelEdit={() => setEditConsult(null)}
+              onDone={() => {
+                setEditConsult(null);
+                consultations.refetch();
+              }}
             />
           )}
           {!offline && !needsAccess && tab === "ordonnances" &&
@@ -1229,11 +1401,15 @@ function WriteConsult({
   patientId,
   user,
   colors,
+  initial,
+  onCancelEdit,
   onDone,
 }: {
   patientId: number;
   user: ProUser;
   colors: any;
+  initial?: any | null;
+  onCancelEdit?: () => void;
   onDone: () => void;
 }) {
   const structures = user.structures || [];
@@ -1250,7 +1426,23 @@ function WriteConsult({
   const [motif, setMotif] = useState("");
   const [dx, setDx] = useState("");
   const [notes, setNotes] = useState("");
+  const [share, setShare] = useState(true);
+  const [synthese, setSynthese] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!initial) return;
+    setType(initial.type || "consultation");
+    setSpecialite(initial.specialite || defaultSpec);
+    setStructure(initial.structure ? String(initial.structure) : structure);
+    setMotif(initial.motif || "");
+    setDx(initial.diagnostic || "");
+    setNotes(initial.notes || "");
+    setShare(true);
+    setSynthese(initial.synthese_patient || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial?.id]);
+
   const inputStyle = {
     borderWidth: 1,
     borderColor: colors.border,
@@ -1261,7 +1453,22 @@ function WriteConsult({
 
   return (
     <Card colors={colors} style={{ gap: 8 }}>
-      <Text style={{ fontWeight: "800", color: colors.text }}>Nouvelle consultation</Text>
+      <Text style={{ fontWeight: "800", color: colors.text }}>
+        {initial
+          ? initial.appointment_id
+            ? "Compléter la consultation du rendez-vous"
+            : "Modifier la consultation"
+          : "Nouvelle consultation (sans rendez-vous)"}
+      </Text>
+      {initial?.appointment_id ? (
+        <Text style={{ color: colors.muted, fontSize: 12 }}>
+          Issue du rendez-vous. Renseignez le diagnostic et la synthèse pour le patient.
+        </Text>
+      ) : !initial ? (
+        <Text style={{ color: colors.muted, fontSize: 12 }}>
+          Passage sans rendez-vous : remplissez toutes les informations ici.
+        </Text>
+      ) : null}
       <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Spécialité</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
         {specOptions.map((s) => (
@@ -1346,6 +1553,37 @@ function WriteConsult({
         multiline
         style={{ ...inputStyle, minHeight: 64, textAlignVertical: "top" }}
       />
+      <Pressable
+        onPress={() => setShare((v) => !v)}
+        style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 }}
+      >
+        <Ionicons
+          name={share ? "checkbox" : "square-outline"}
+          size={22}
+          color={share ? C.blue : colors.muted}
+        />
+        <Text style={{ color: colors.text, fontSize: 13, fontWeight: "600", flex: 1 }}>
+          Partager une synthèse avec le patient
+        </Text>
+      </Pressable>
+      {share ? (
+        <TextInput
+          value={synthese}
+          onChangeText={setSynthese}
+          placeholder="Synthèse visible par le patient"
+          placeholderTextColor={colors.muted}
+          multiline
+          style={{ ...inputStyle, minHeight: 56, textAlignVertical: "top" }}
+        />
+      ) : null}
+      {initial ? (
+        <Button
+          title="Annuler la modification"
+          outline
+          color={colors.muted}
+          onPress={() => onCancelEdit?.()}
+        />
+      ) : null}
       <Button
         title="Enregistrer"
         loading={busy}
@@ -1357,19 +1595,30 @@ function WriteConsult({
           }
           setBusy(true);
           try {
-            await api.createConsultation({
+            const body: Record<string, unknown> = {
               patient: patientId,
               diagnostic: dx.trim(),
               motif: motif.trim(),
               notes: notes.trim(),
-              date: nowISO(),
               type,
               specialite,
               structure: Number(structure),
-            });
+              shared_with_patient: share,
+              synthese_patient: share
+                ? synthese.trim() ||
+                  `Synthèse : ${dx.trim() || motif.trim() || "Consultation"}. ${notes.trim()}`.trim()
+                : "",
+            };
+            if (initial?.id) {
+              await api.updateConsultation(initial.id, body);
+            } else {
+              await api.createConsultation({ ...body, date: nowISO() });
+            }
             setDx("");
             setMotif("");
             setNotes("");
+            setSynthese("");
+            setShare(true);
             onDone();
           } catch (e: any) {
             appAlert("Erreur", e.message);
@@ -1523,20 +1772,23 @@ function WriteOrdo({
               {lines.map((m, i) => (
                 <View key={i} style={{ gap: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.border }}>
                   <Text style={{ color: colors.text, fontWeight: "800" }}>Médicament {i + 1}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Nom du médicament</Text>
                   <TextInput
                     value={m.nom}
                     onChangeText={(t) => patchLine(i, { nom: t })}
-                    placeholder="Nom (ex. PARA)"
+                    placeholder="Nom"
                     placeholderTextColor={colors.muted}
                     style={field}
                   />
+                  <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Dosage ou concentration</Text>
                   <TextInput
                     value={m.dosage}
                     onChangeText={(t) => patchLine(i, { dosage: t })}
-                    placeholder="Dosage (ex. 1000 mg)"
+                    placeholder="ex. 100 mg"
                     placeholderTextColor={colors.muted}
                     style={field}
                   />
+                  <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Forme pharmaceutique</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                     {MEDICAMENT_FORMES.map((f) => (
                       <Pressable
@@ -1554,37 +1806,39 @@ function WriteOrdo({
                       </Pressable>
                     ))}
                   </ScrollView>
+                  <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Quantité prescrite</Text>
                   <TextInput
                     value={m.quantite}
                     onChangeText={(t) => patchLine(i, { quantite: t })}
-                    placeholder="Quantité (ex. 1 boîte)"
+                    placeholder="ex. 2 boîtes"
                     placeholderTextColor={colors.muted}
                     style={field}
                   />
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <TextInput
-                      value={m.unites_par_prise}
-                      onChangeText={(t) => patchLine(i, { unites_par_prise: t })}
-                      placeholder="Unité/prise"
-                      placeholderTextColor={colors.muted}
-                      style={{ ...field, flex: 1 }}
-                    />
-                    <TextInput
-                      value={m.frequence_par_jour}
-                      onChangeText={(t) => patchLine(i, { frequence_par_jour: t })}
-                      placeholder="× / jour"
-                      placeholderTextColor={colors.muted}
-                      style={{ ...field, flex: 1 }}
-                    />
-                    <TextInput
-                      value={String(m.duree_jours)}
-                      onChangeText={(t) => patchLine(i, { duree_jours: Number(t.replace(/\D/g, "")) || "" })}
-                      keyboardType="number-pad"
-                      placeholder="Jours"
-                      placeholderTextColor={colors.muted}
-                      style={{ ...field, width: 72 }}
-                    />
-                  </View>
+                  <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Posologie</Text>
+                  <TextInput
+                    value={m.unites_par_prise}
+                    onChangeText={(t) => patchLine(i, { unites_par_prise: t })}
+                    placeholder="Quantité par prise, ex. 1 comprimé"
+                    placeholderTextColor={colors.muted}
+                    style={field}
+                  />
+                  <TextInput
+                    value={m.frequence_par_jour}
+                    onChangeText={(t) => patchLine(i, { frequence_par_jour: t })}
+                    placeholder="Fréquence, ex. 2 fois par jour"
+                    placeholderTextColor={colors.muted}
+                    style={field}
+                  />
+                  <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Durée du traitement (jours)</Text>
+                  <TextInput
+                    value={String(m.duree_jours)}
+                    onChangeText={(t) => patchLine(i, { duree_jours: Number(t.replace(/\D/g, "")) || "" })}
+                    keyboardType="number-pad"
+                    placeholder="ex. 7"
+                    placeholderTextColor={colors.muted}
+                    style={field}
+                  />
+                  <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Moment de prise</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                     {MEDICAMENT_MOMENTS.map((mo) => (
                       <Pressable
@@ -1602,16 +1856,15 @@ function WriteOrdo({
                       </Pressable>
                     ))}
                   </ScrollView>
+                  <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "700" }}>Instructions</Text>
                   <TextInput
                     value={m.instructions}
                     onChangeText={(t) => patchLine(i, { instructions: t })}
-                    placeholder="Instructions complémentaires (optionnel)"
+                    placeholder="Optionnel"
                     placeholderTextColor={colors.muted}
                     style={field}
                   />
-                  {m.nom ? (
-                    <Text style={{ color: colors.muted, fontSize: 12 }}>{summarizeMed(m)}</Text>
-                  ) : null}
+                  {m.nom ? <RxMed m={m} text={colors.text} muted={colors.muted} border={colors.border} /> : null}
                 </View>
               ))}
               <Button

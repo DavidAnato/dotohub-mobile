@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { appAlert } from "../components/AppDialog";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import { setPendingOcr } from "../pendingOcr";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { C, darkC, brandNavy, onBrand } from "../theme";
@@ -25,19 +27,23 @@ import {
 export default function Scan({
   onScanned,
   onPendingConsent,
+  onIdRead,
   dark = false,
 }: {
   onScanned?: (
     patientId: number,
     npi: string,
-    meta?: { emergency?: boolean; urgence?: any }
+    meta?: { emergency?: boolean; urgence?: any; durationRequired?: boolean }
   ) => void;
   onPendingConsent?: (info: {
     patientId: number;
     npi: string;
     name: string;
     accessRequestId?: number;
+    message?: string;
   }) => void;
+  /** Photo CIP / CEDEAO envoyée au hub : ouvre le formulaire nouveau patient. */
+  onIdRead?: () => void;
   dark?: boolean;
 }) {
   const colors = dark ? darkC : C;
@@ -67,6 +73,39 @@ export default function Scan({
 
   const cameraOn = isFocused && cameraLive;
 
+  const readIdCard = async () => {
+    if (busy) return;
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      appAlert("Caméra", "Autorisez la caméra pour photographier la pièce.");
+      return;
+    }
+    const shot = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.7,
+    });
+    if (shot.canceled || !shot.assets?.[0]) return;
+    const asset = shot.assets[0];
+    setBusy(true);
+    setLastMsg("");
+    try {
+      const data = await api.ocrIdCard({
+        uri: asset.uri,
+        type: asset.mimeType || "image/jpeg",
+        name: asset.fileName || "piece.jpg",
+      });
+      setPendingOcr(data);
+      hapticSuccess();
+      setLastMsg(`Pièce lue · ${data.npi}`);
+      onIdRead?.();
+    } catch (e: any) {
+      setLastMsg(e.message || "Lecture impossible");
+      appAlert("Pièce", e.message || "Lecture impossible.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleScan = async ({ data }: { data: string }) => {
     if (!data || busy || locked.current) return;
     locked.current = true;
@@ -80,7 +119,26 @@ export default function Scan({
           ? `${res.urgence.prenom || ""} ${res.urgence.nom || ""}`.trim()
           : res.npi);
 
-      if (res.consent_required) {
+      if (res.access_expired) {
+        setLastMsg("Cet accès a expiré");
+        appAlert("Accès", "Cet accès a expiré");
+        return;
+      }
+      if (res.duration_required || res.dossier_visible === false) {
+        const name = res.full_name || res.npi;
+        setLastMsg(res.message || `Dossier fermé · ${name}`);
+        if (res.duration_required) {
+          onScanned?.(res.patient_id, res.npi, { durationRequired: true });
+        } else {
+          onPendingConsent?.({
+            patientId: res.patient_id,
+            npi: res.npi,
+            name: name || "",
+            accessRequestId: res.access_request?.id,
+            message: res.message,
+          });
+        }
+      } else if (res.consent_required) {
         setLastMsg(`En attente · ${name}`);
         onPendingConsent?.({
           patientId: res.patient_id,
@@ -248,6 +306,15 @@ export default function Scan({
             </View>
           </Card>
 
+          <Button
+            title="Nouveau patient — lire la pièce"
+            icon="camera-outline"
+            outline
+            onPress={() => void readIdCard()}
+            loading={busy}
+            color={C.teal}
+          />
+
           {lastMsg ? (
             <Text
               style={{
@@ -282,7 +349,7 @@ export default function Scan({
               color={C.teal}
             />
             <Text style={{ color: C.teal, fontWeight: "700", fontSize: 13 }}>
-              {showManual ? "Masquer la saisie" : "Saisie manuelle du token"}
+              {showManual ? "Masquer la saisie" : "Saisir le code de la carte"}
             </Text>
           </PressScale>
 

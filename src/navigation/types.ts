@@ -8,16 +8,18 @@ export type MainTabParamList = {
 
 export type RootStackParamList = {
   MainTabs: undefined;
-  Patient: { patientId: number };
+  Patient: { patientId: number; consultId?: number };
   ConsentWaiting: {
     patientId: number;
     npi: string;
     name: string;
     accessRequestId?: number;
+    message?: string;
   };
   PharmaFile: undefined;
   LaboFile: undefined;
   Tournee: undefined;
   NouveauPatient: undefined;
+  Demandes: undefined;
   UrgencePro: { patientId?: number };
 };

@@ -1,5 +1,16 @@
 /** Deep-link notifications DotoHub mobile - aligné sur `core/contracts.py`. */
 
+import { isRunningInExpoGo } from "expo";
+import { Platform } from "react-native";
+
+/**
+ * SDK 53+ : importer expo-notifications throw sur Expo Go Android
+ * (auto-enregistrement du token push). Sortir avant l'import.
+ */
+function expoGoAndroidPushRemoved(): boolean {
+  return Platform.OS === "android" && isRunningInExpoGo();
+}
+
 export type NotifLike = {
   type?: string;
   notif_type?: string;
@@ -68,6 +79,7 @@ export function subscribePushNavigation(): () => void {
   };
   void (async () => {
     try {
+      if (expoGoAndroidPushRemoved()) return;
       const Notifications = await import("expo-notifications");
       const last = await Notifications.getLastNotificationResponseAsync();
       if (last?.notification?.request?.content?.data) {

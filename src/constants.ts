@@ -2,11 +2,9 @@
 
 export const HOSPITAL_REQUIRED_ROLES = [
   "medecin",
-  "infirmier",
   "pharmacien",
   "laborantin",
   "ambulancier",
-  "receptionniste",
 ] as const;
 
 export const TYPE_EXERCICE = [
@@ -31,11 +29,9 @@ export function typeExerciceHint(kind: string): string {
 
 export const PRO_ROLES = [
   { v: "medecin", l: "Médecin" },
-  { v: "infirmier", l: "Infirmier" },
   { v: "pharmacien", l: "Pharmacien" },
   { v: "laborantin", l: "Laborantin" },
   { v: "ambulancier", l: "Ambulancier" },
-  { v: "receptionniste", l: "Réceptionniste" },
 ] as const;
 
 export function needsHospitalAttach(user?: {
@@ -106,6 +102,7 @@ export const MEDICAMENT_FORMES = [
   "crème",
   "suppositoire",
   "inhalateur",
+  "spray nasal",
   "patch",
   "injectable",
   "autre",
@@ -163,6 +160,39 @@ export function emptyMedLine(): MedLine {
   };
 }
 
+export function medSheet(m: {
+  nom?: string;
+  dosage?: string;
+  forme?: string;
+  quantite?: string;
+  unites_par_prise?: string;
+  frequence_par_jour?: string;
+  frequence?: string;
+  duree_jours?: number | "" | null;
+  moment?: string;
+  instructions?: string;
+}) {
+  const nom = (m.nom || "").trim();
+  const forme = (m.forme || "").trim();
+  const dosage = (m.dosage || "").trim();
+  const head = [nom, forme].filter(Boolean).join(", ") + (dosage ? ` — ${dosage}` : "");
+  const moment = MEDICAMENT_MOMENTS.find((x) => x.value === m.moment)?.label;
+  const momentLabel = moment && moment !== "-" ? moment : "";
+  const parts = [m.unites_par_prise, m.frequence_par_jour, momentLabel]
+    .map((s) => (s || "").trim())
+    .filter(Boolean);
+  const posologie = parts.join(", ") || (m.frequence || "").trim();
+  const days = Number(m.duree_jours);
+  const duree = days > 0 ? `${days} jour${days > 1 ? "s" : ""}` : "";
+  return {
+    head,
+    quantite: (m.quantite || "").trim(),
+    posologie,
+    duree,
+    instructions: (m.instructions || "").trim(),
+  };
+}
+
 export function summarizeMed(m: {
   nom?: string;
   dosage?: string;
@@ -171,28 +201,18 @@ export function summarizeMed(m: {
   unites_par_prise?: string;
   frequence_par_jour?: string;
   frequence?: string;
-  duree_jours?: number | "";
+  duree_jours?: number | "" | null;
   moment?: string;
   instructions?: string;
 }): string {
-  const poso =
-    m.unites_par_prise && m.frequence_par_jour
-      ? `${m.unites_par_prise} × ${m.frequence_par_jour}`
-      : m.frequence || "";
-  const duree = m.duree_jours
-    ? `pendant ${m.duree_jours} jour${Number(m.duree_jours) > 1 ? "s" : ""}`
-    : "";
-  const moment = MEDICAMENT_MOMENTS.find((x) => x.value === m.moment)?.label;
+  const sheet = medSheet(m);
   return [
-    m.nom,
-    m.dosage,
-    m.forme,
-    m.quantite,
-    poso,
-    duree,
-    moment && moment !== "-" ? moment : "",
-    m.instructions,
+    sheet.head,
+    sheet.quantite,
+    sheet.posologie ? `Posologie : ${sheet.posologie}` : "",
+    sheet.duree ? `Durée du traitement : ${sheet.duree}` : "",
+    sheet.instructions,
   ]
     .filter(Boolean)
-    .join(" - ");
+    .join("\n");
 }

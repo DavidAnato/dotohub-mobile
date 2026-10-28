@@ -1,3 +1,4 @@
+import { formatDrfData, humanizeApiText } from "./apiMessage";
 import { ProUser } from "./theme";
 import { storage, PatientCacheItem } from "./storage";
 
@@ -6,17 +7,26 @@ const DEFAULT_HOST = "127.0.0.1";
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   (process.env.EAS_BUILD === "true"
-    ? "https://doto-anato.loca.lt"
+    ? "https://doto-api.await-tech.com"
     : `http://${DEFAULT_HOST}:8001`);
 
-/** Aligne les URLs média (souvent 127.0.0.1) sur l’hôte API de l’app. */
+/** Aligne un média local ou un chemin /media/ collé sous /api/… sur l’API. */
 export function resolveMediaUrl(url?: string | null): string | null {
   if (!url) return null;
   try {
-    const media = new URL(url);
-    const api = new URL(API_URL);
-    media.protocol = api.protocol;
-    media.host = api.host;
+    const media = new URL(url, API_URL);
+    const idx = media.pathname.indexOf("/media/");
+    if (idx > 0) media.pathname = media.pathname.slice(idx);
+    const host = media.hostname;
+    const local =
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "await-origin.fotoce.app";
+    if (local) {
+      const api = new URL(API_URL);
+      media.protocol = api.protocol;
+      media.host = api.host;
+    }
     return media.toString();
   } catch {
     return url;
@@ -110,7 +120,7 @@ async function request(path: string, options: RequestInit = {}, retry = true): P
     ...(options.headers as Record<string, string> | undefined),
   };
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), 10000);
+  const timer = setTimeout(() => ac.abort(), 25000);
   try {
     const res = await fetch(`${API_URL}${path}`, {
       ...options,
@@ -123,6 +133,11 @@ async function request(path: string, options: RequestInit = {}, retry = true): P
       if (hadAuth) await notifySessionExpired();
     }
     return res;
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("Le serveur met trop de temps à répondre. Réessayez.");
+    }
+    throw e;
   } finally {
     clearTimeout(timer);
   }
@@ -132,22 +147,26 @@ async function requestJson<T = any>(path: string, options: RequestInit = {}): Pr
   const res = await request(path, options);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(formatApiError(data, `Erreur API (${res.status})`));
+    throw new Error(formatApiError(data, "Action impossible."));
   }
   if (res.status === 204) return undefined as T;
   return res.json();
 }
 
 function formatApiError(data: any, fallback: string): string {
-  if (!data || typeof data !== "object") return fallback;
-  if (typeof data.detail === "string") return data.detail;
-  const parts: string[] = [];
-  for (const [key, val] of Object.entries(data)) {
-    if (key === "detail") continue;
-    if (Array.isArray(val)) parts.push(`${key}: ${val.join(", ")}`);
-    else if (typeof val === "string") parts.push(`${key}: ${val}`);
+  return formatDrfData(data) || humanizeApiText(fallback);
+}
+
+function cachedDossierStillOpen(data: any): boolean {
+  const consent = data?.consent;
+  if (!consent || consent.expired) return false;
+  if (consent.required && !consent.granted) return false;
+  if (consent.admin || consent.direct_structure) return !!consent.granted;
+  if (consent.granted && consent.grant_expires_at) {
+    const end = Date.parse(String(consent.grant_expires_at));
+    if (!Number.isNaN(end) && Date.now() >= end) return false;
   }
-  return parts.length ? parts.join(" · ") : fallback;
+  return !!consent.granted;
 }
 
 export const api = {
@@ -335,7 +354,7 @@ export const api = {
       return data;
     } catch (e) {
       const cached = await storage.getCachedDossier(Number(id));
-      if (cached) {
+      if (cached && cachedDossierStillOpen(cached)) {
         const navOffline =
           typeof navigator !== "undefined" &&
           typeof navigator.onLine === "boolean" &&
@@ -353,7 +372,7 @@ export const api = {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(formatApiError(data, `Erreur API (${res.status})`));
+      throw new Error(formatApiError(data, "Action impossible."));
     }
     return res.json();
   },
@@ -365,7 +384,7 @@ export const api = {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(formatApiError(data, `Erreur API (${res.status})`));
+      throw new Error(formatApiError(data, "Action impossible."));
     }
     return res.json();
   },
@@ -498,6 +517,13 @@ export const api = {
   async createConsultation(body: any) {
     return requestJson("/api/consultations/", {
       method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  async updateConsultation(id: number, body: any) {
+    return requestJson(`/api/consultations/${id}/`, {
+      method: "PATCH",
       body: JSON.stringify(body),
     });
   },
@@ -707,30 +733,157 @@ export const api = {
     return requestJson(`/api/patients/${patientId}/assurance/`, { method: "DELETE" });
   },
 
-  async scanDotoCard(token: string, emergency = false) {
+  async scanDotoCard(token: string, emergency = false, durationHours?: number) {
     return requestJson("/api/dodocards/scan/", {
       method: "POST",
-      body: JSON.stringify({ token, emergency }),
+      body: JSON.stringify({
+        token,
+        emergency,
+        ...(durationHours ? { duration_hours: durationHours } : {}),
+      }),
     }) as Promise<{
       patient_id: number;
       npi: string;
-      urgence: any;
+      full_name?: string;
+      urgence?: any;
       hub_notified?: boolean;
       consent_required?: boolean;
       emergency?: boolean;
+      dossier_visible?: boolean;
+      duration_required?: boolean;
       access_request?: any;
       message?: string;
     }>;
   },
 
-  async requestAccess(patientId: number, emergency = false) {
+  async requestAccess(
+    patientId: number,
+    emergencyOrOpts: boolean | { emergency?: boolean; durationHours?: number } = false
+  ) {
+    const opts = typeof emergencyOrOpts === "boolean" ? { emergency: emergencyOrOpts } : emergencyOrOpts || {};
     return requestJson("/api/access-requests/create/", {
       method: "POST",
       body: JSON.stringify({
         patient_id: patientId,
         mode: "search",
-        emergency,
+        emergency: !!opts.emergency,
+        ...(opts.durationHours ? { duration_hours: opts.durationHours } : {}),
       }),
+    });
+  },
+
+  async accessInbox() {
+    const data = await requestJson("/api/access-requests/?inbox=1");
+    return Array.isArray(data) ? data : [];
+  },
+
+  async approveAccess(id: number) {
+    return requestJson(`/api/access-requests/${id}/approve/`, { method: "POST" });
+  },
+
+  async denyAccess(id: number) {
+    return requestJson(`/api/access-requests/${id}/deny/`, { method: "POST" });
+  },
+
+  async hopitalTransfers() {
+    const data = await requestJson("/api/hopital-mere/transferts/");
+    return Array.isArray(data) ? data : [];
+  },
+
+  async createHopitalTransfer(body: {
+    patient_id: number;
+    duration_hours: number;
+    to_structure_id?: number;
+  }) {
+    return requestJson("/api/hopital-mere/transferts/", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  async approveHopitalTransfer(id: number) {
+    return requestJson(`/api/hopital-mere/transferts/${id}/approve/`, { method: "POST" });
+  },
+
+  async denyHopitalTransfer(id: number) {
+    return requestJson(`/api/hopital-mere/transferts/${id}/deny/`, { method: "POST" });
+  },
+
+  async confirmHopitalTransfer(id: number) {
+    return requestJson(`/api/hopital-mere/transferts/${id}/confirm/`, { method: "POST" });
+  },
+
+  async cancelHopitalTransfer(id: number) {
+    return requestJson(`/api/hopital-mere/transferts/${id}/cancel/`, { method: "POST" });
+  },
+
+  async emettreCarte(patientId: number) {
+    return requestJson(`/api/patients/${patientId}/emettre-carte/`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
+
+  async ocrIdCard(file: { uri: string; type?: string; name?: string }) {
+    const token = await storage.getAccess();
+    const form = new FormData();
+    form.append("image", {
+      uri: file.uri,
+      type: file.type || "image/jpeg",
+      name: file.name || "piece.jpg",
+    } as any);
+    const res = await fetch(`${API_URL}/api/auth/patient/ocr-id/`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(formatApiError(data, "Lecture de la pièce impossible."));
+    if (!data?.npi) throw new Error("NPI introuvable sur cette image.");
+    return data as {
+      ok?: boolean;
+      npi: string;
+      first_name?: string | null;
+      last_name?: string | null;
+      birth_date?: string | null;
+      birth_place?: string | null;
+      phone?: string | null;
+      address_commune?: string | null;
+      address_arrondissement?: string | null;
+      address_quartier?: string | null;
+      father_name?: string | null;
+      mother_name?: string | null;
+      card_type?: string | null;
+    };
+  },
+
+  async uploadPatientPhoto(patientId: number, file: { uri: string; type?: string; name?: string }) {
+    const token = await storage.getAccess();
+    const form = new FormData();
+    form.append("photo", {
+      uri: file.uri,
+      type: file.type || "image/jpeg",
+      name: file.name || "photo.jpg",
+    } as any);
+    const res = await fetch(`${API_URL}/api/patients/${patientId}/photo/`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(formatApiError(data, "Photo impossible."));
+    return data;
+  },
+
+  async medecinsReferents(patientId: number) {
+    const data = await requestJson(`/api/patients/${patientId}/medecins-referents/`);
+    return Array.isArray(data) ? data : [];
+  },
+
+  async setMedecinReferent(patientId: number, medecinId: number | null) {
+    return requestJson(`/api/patients/${patientId}/medecin-referent/`, {
+      method: "POST",
+      body: JSON.stringify({ medecin_id: medecinId }),
     });
   },
 

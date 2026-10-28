@@ -24,6 +24,7 @@ import {
 import { Button, Card, Field, Header } from "../ui";
 import { C, darkC } from "../theme";
 import { api } from "../api";
+import { labelStatut } from "../apiMessage";
 import { usePullRefresh } from "../hooks/usePullRefresh";
 
 type Scope = "tous" | "mes" | "incomplets";
@@ -312,7 +313,7 @@ export default function LaboFile({
                   Bon #{b.id} · {b.patient_nom}
                 </Text>
                 <Text style={{ color: colors.muted, fontSize: 12 }}>
-                  {b.statut_label || b.statut} · {(b.lignes || []).map((l: any) => l.type_examen).join(", ")}
+                  {labelStatut(b.statut, b.statut_label)} · {(b.lignes || []).map((l: any) => l.type_examen).join(", ")}
                 </Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                   {b.statut === "demande" ? (
@@ -551,7 +552,7 @@ export default function LaboFile({
                   Patient
                 </Text>
                 <Text style={{ color: colors.muted, fontSize: 11, marginTop: -6 }}>
-                  Recherche par nom ou NPI - pas d'identifiant technique
+                  Recherche par nom ou NPI
                 </Text>
                 <PatientSelectSearch
                   value={form.patient}
